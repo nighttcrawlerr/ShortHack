@@ -14,8 +14,26 @@ def _extract_entities(body: str) -> dict:
     return found
 
 
+def _meaningful_text(body: str) -> str:
+    """Из расшифровки звонка берём слова абонента, а не служебную шапку и не оператора."""
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    caller = [
+        line.split(":", 1)[1].strip()
+        for line in lines
+        if line.lower().startswith("абонент:") and ":" in line
+    ]
+    if caller:
+        return " ".join(caller)
+    useful = [
+        line
+        for line in lines
+        if not line.lower().startswith(("расшифровка", "оператор:", "здравствуйте", "добрый день"))
+    ]
+    return " ".join(useful) or " ".join(lines)
+
+
 def _first_sentence(body: str, limit: int = 180) -> str:
-    text = " ".join(body.split())
+    text = " ".join(_meaningful_text(body).split())
     parts = re.split(r"(?<=[.!?])\s", text)
     for part in parts:
         if len(part) > 25:
@@ -68,6 +86,10 @@ def decide(analysis: dict, similar: list, kb: list, mass_incident: bool) -> dict
     action = rule["action"]
     if analysis.get("missing_fields"):
         action = "ask_clarification"
+    if mass_incident:
+        # То же правило, что и в системном промпте: при массовом сбое заявка нужна
+        # в любом случае, даже если данных о конкретном пользователе не хватает.
+        action = "create_ticket"
 
     service = analysis.get("service", "сервис")
     summary = analysis.get("summary", "")
@@ -75,8 +97,9 @@ def decide(analysis: dict, similar: list, kb: list, mass_incident: bool) -> dict
     if action == "create_ticket":
         prefix = "Возможен массовый сбой, есть похожие обращения.\n" if mass_incident else ""
         hint = ""
-        if similar:
-            hint = f"\nПохожая заявка {similar[0]['key']}: {similar[0].get('resolution') or 'решение не указано'}"
+        solved = next((item for item in similar if item.get("resolution")), None)
+        if solved:
+            hint = f"\nПохожая заявка {solved['key']}: {solved['resolution']}"
         return {
             "name": "create_ticket",
             "arguments": {

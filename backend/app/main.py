@@ -49,10 +49,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.routers import messages, misc  # noqa: E402
+from app.routers import messages, misc, tickets  # noqa: E402
 
 app.include_router(misc.router)
 app.include_router(messages.router)
+app.include_router(tickets.router)
 
 
 @app.get("/")

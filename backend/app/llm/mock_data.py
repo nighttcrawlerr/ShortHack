@@ -10,7 +10,7 @@ RULES = [
         "action": "create_ticket",
     },
     {
-        "keys": ["пароль", "забыл", "заблокир", "учётн", "учетн", "не пускает", "вход"],
+        "keys": ["пароль", "заблокир", "учётн", "учетн", "не пускает", "войти", "не впускает"],
         "category": "access",
         "service": "Учётная запись домена",
         "priority": "P2",
@@ -26,10 +26,18 @@ RULES = [
         "action": "create_ticket",
     },
     {
-        "keys": ["принтер", "ноутбук", "монитор", "мышь", "печат", "не включается"],
+        "keys": ["принтер", "печат", "картридж"],
         "category": "hardware",
-        "service": "Оборудование",
+        "service": "Печать",
         "priority": "P3",
+        "team": "hardware_team",
+        "action": "create_ticket",
+    },
+    {
+        "keys": ["не включается", "монитор", "мышь", "клавиатур", "зарядк"],
+        "category": "hardware",
+        "service": "Рабочая станция",
+        "priority": "P2",
         "team": "hardware_team",
         "action": "create_ticket",
     },
@@ -76,7 +84,7 @@ DEFAULT_RULE = {
 }
 
 ENTITY_PATTERNS = {
-    "login": r"логин[:\s]+([A-Za-z][A-Za-z0-9._-]{2,})",
+    "login": r"(?:логин|login)[^A-Za-z]{0,20}([A-Za-z][A-Za-z0-9._-]*[A-Za-z0-9])",
     "error_code": r"\b(ERR[_A-Z0-9]+|[A-Z]{3,}_[A-Z_]{3,})\b",
     "os": r"\b(Windows\s?\d+|macOS[\w\s.]{0,8}|Android|iOS)\b",
     "browser": r"\b(Chrome|Safari|Firefox|Edge)\b",
