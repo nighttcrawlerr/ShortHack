@@ -15,7 +15,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # yandex | gigachat | openai | ollama | mock
     llm_provider: str = "mock"
+    llm_folder_id: str = ""
     llm_base_url: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
@@ -27,9 +29,17 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b-instruct"
     embedding_model: str = "bge-m3"
+    # У Yandex Cloud модели эмбеддингов разные для документов и запросов
+    yandex_embedding_doc: str = "text-embeddings-v2-doc"
+    yandex_embedding_query: str = "text-embeddings-v2-query"
 
     # auto | gigachat | ollama | none
     embeddings_provider: str = "auto"
+
+    # Ответ, прошедший проверку, уходит пользователю сам. Человек подключается
+    # только там, где проверка что-то нашла: он разбирает исключения,
+    # а не подтверждает каждое письмо.
+    auto_send: bool = True
 
     # Порог достоверности: ниже него ответ не показывается как готовый
     verification_threshold: float = 0.7

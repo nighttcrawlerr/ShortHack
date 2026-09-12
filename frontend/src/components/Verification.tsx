@@ -33,6 +33,7 @@ const CHECK_LABELS: Record<string, string> = {
   model_claims: 'Проверено утверждений',
   sentences: 'Утверждений в ответе',
   sources: 'Передано фрагментов',
+  questions: 'Из них вопросов к пользователю',
 }
 
 const VERDICT_MARK: Record<string, string> = {

@@ -150,10 +150,15 @@ def check_deterministic(answer: str, passages: list[dict], message_body: str) ->
         )
     citation_score = 0.0 if broken else (1.0 if used else 0.3)
 
-    # 2. Утверждения без ссылки на источник
-    unsupported = [s for s in sentences if not CITATION.search(s)]
-    if sentences:
-        supported_share = 1 - len(unsupported) / len(sentences)
+    # 2. Утверждения без ссылки на источник.
+    # Вопрос — не утверждение: спрашивая, помощник ничего не заявляет,
+    # поэтому ссылка на источник от вопроса не требуется.
+    statements = [s for s in sentences if not s.rstrip().endswith("?")]
+    unsupported = [s for s in statements if not CITATION.search(s)]
+    if statements:
+        supported_share = 1 - len(unsupported) / len(statements)
+    elif sentences:
+        supported_share = 1.0  # в письме одни вопросы, проверять нечего
     else:
         supported_share = 0.0
     for sentence in unsupported[:5]:
@@ -221,6 +226,7 @@ def check_deterministic(answer: str, passages: list[dict], message_body: str) ->
         checks={
             "citations_valid": not broken,
             "cited_share": round(supported_share, 2),
+            "questions": len(sentences) - len(statements),
             "facts_grounded": not fact_issues,
             "lexical_coverage": round(coverage, 2),
             "no_unsupported_promises": not promise_issues,

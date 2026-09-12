@@ -90,6 +90,8 @@ class Analysis(Base):
     passages: Mapped[list] = mapped_column(JSONText, default=list)
     verification: Mapped[dict | None] = mapped_column(JSONText, nullable=True)
     retrieval_mode: Mapped[str] = mapped_column(String(20), default="лексический")
+    auto_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    human_reason: Mapped[str] = mapped_column(Text, default="")
 
     model: Mapped[str] = mapped_column(String(80), default="mock")
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)

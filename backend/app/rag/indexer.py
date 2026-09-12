@@ -40,12 +40,17 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
 
     embedder = get_embedder(token_provider)
     embedded = 0
+    error: str | None = None
+
     if embedder.available() and created:
         for start in range(0, len(created), BATCH):
             batch = created[start : start + BATCH]
             try:
                 vectors = embedder.embed([chunk.text for chunk in batch])
-            except Exception:  # noqa: BLE001  индекс полезен и без векторов
+            except Exception as exc:  # noqa: BLE001  индекс полезен и без векторов
+                # Молча проглотить ошибку нельзя: иначе поиск тихо деградирует
+                # до лексического, и никто этого не заметит до самой защиты.
+                error = f"{type(exc).__name__}: {exc}"[:300]
                 break
             for chunk, vector in zip(batch, vectors):
                 chunk.embedding = vector
@@ -54,8 +59,11 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
             db.commit()
 
     Retriever._cache = {}
-    return {
+    result = {
         "chunks": len(created),
         "embedded": embedded,
         "embedder": embedder.name,
     }
+    if error:
+        result["error"] = error
+    return result

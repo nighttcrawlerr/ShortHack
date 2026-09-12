@@ -152,6 +152,35 @@ def _extract(client, message: Message, trace: Trace) -> dict:
     return clean
 
 
+def _search_query(message: Message, extracted: dict) -> str:
+    """Запрос к поиску собирается из разбора, а не из письма целиком.
+
+    В письме половина текста — приветствие, извинения и описание того, как
+    человек расстроен. Для поиска это шум: он размывает совпадение и тянет
+    выдачу к статьям, где просто много общих слов. Модель на первом шаге уже
+    выделила суть, сервис и найденные коды ошибок — из них и собираем запрос.
+    """
+    parts: list[str] = []
+
+    if message.subject:
+        parts.append(message.subject)
+
+    parts.extend(extracted.get("intents") or [])
+    parts.append(extracted.get("summary", ""))
+
+    service = extracted.get("service", "")
+    if service and service != "Не определён":
+        parts.append(service)
+
+    entities = extracted.get("entities") or {}
+    for key in ("error_code", "service_name", "device", "os", "browser"):
+        value = entities.get(key)
+        if value:
+            parts.append(str(value))
+
+    return " ".join(part for part in parts if part).strip() or message.body
+
+
 # --- шаг 4 -----------------------------------------------------------------
 
 
@@ -227,8 +256,16 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
         return existing
 
     if force:
+        # Повторный разбор должен начинаться с чистого листа: иначе рядом
+        # с новым решением остаются черновики предыдущего прогона.
         for step in list(message.steps):
             db.delete(step)
+        for letter in list(message.outbox):
+            if letter.status == "draft":
+                db.delete(letter)
+        for ticket in list(message.tickets):
+            if ticket.status == "proposed":
+                db.delete(ticket)
         db.commit()
 
     client = get_llm_client()
@@ -243,7 +280,7 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     db.commit()
     db.refresh(analysis)
 
-    query_text = f"{message.subject or ''} {message.body}"
+    query_text = _search_query(message, extracted)
 
     t0 = time.perf_counter()
     similar = search.search_similar_tickets(
@@ -354,8 +391,31 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
         int((time.perf_counter() - t0) * 1000),
     )
 
+    # Уточняющее письмо тоже уходит пользователю, поэтому проверяется.
+    # Здесь достаточно программного слоя: вопросы должны опираться на текст
+    # обращения, а выдуманных телефонов и сроков в них быть не может.
+    if tool_name == "ask_clarification" and verdict is None:
+        letter = next((o for o in message.outbox if o.status == "draft"), None)
+        if letter is not None:
+            t0 = time.perf_counter()
+            verdict = roles.verify_answer(
+                client, letter.body, passages, message.body, use_model=False
+            )
+            analysis.verification = verdict.as_dict()
+            letter.verification = verdict.as_dict()
+            letter.sources = passages
+            db.commit()
+            trace.add(
+                "tool", "verify_answer",
+                "проверка уточняющего письма",
+                f"{verdict.status}, оценка {verdict.score:.2f}, нарушений {len(verdict.issues)}",
+                int((time.perf_counter() - t0) * 1000),
+            )
+
     analysis.suggested_action = tool_name
     analysis.action_reason = _action_reason(tool_name, extracted, similar, kb, mass, verdict)
+
+    _route(db, message, analysis, verdict, tool_name, extracted)
     analysis.similar_ticket_ids = [item["id"] for item in similar]
     analysis.kb_article_ids = analysis.kb_article_ids or [item["id"] for item in kb]
     analysis.mass_incident = mass
@@ -363,8 +423,6 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     db.commit()
 
     trace.flush()
-
-    message.status = "analyzed"
     db.commit()
     db.refresh(analysis)
     return analysis
@@ -395,3 +453,61 @@ def _action_reason(action: str, extracted: dict, similar: list, kb: list,
     if mass:
         parts.append("Поднят признак возможного массового сбоя.")
     return " ".join(parts)
+
+
+# --- маршрутизация: что уходит само, а что человеку ------------------------
+
+
+def _route(db: Session, message: Message, analysis: Analysis, verdict,
+           tool_name: str, extracted: dict) -> None:
+    """Решает, отправить результат сразу или передать человеку.
+
+    Подтверждать каждое письмо человеком слишком медленно: пользователь ждёт
+    ответа, пока оператор разгребает очередь. Поэтому человек здесь разбирает
+    исключения, а не визирует поток. Проверенный ответ уходит сам, а всё,
+    к чему проверка предъявила претензии, останавливается и ждёт человека.
+    """
+    reason = _human_reason(verdict, tool_name, extracted)
+
+    if not settings.auto_send or reason:
+        analysis.auto_sent = False
+        analysis.human_reason = reason or "Автоотправка выключена в настройках"
+        message.status = "analyzed"
+        db.commit()
+        return
+
+    for letter in message.outbox:
+        if letter.status == "draft":
+            letter.status = "sent"
+    for ticket in message.tickets:
+        if ticket.status == "proposed":
+            ticket.status = "waiting_user" if tool_name == "ask_clarification" else "open"
+
+    analysis.auto_sent = True
+    analysis.human_reason = ""
+    message.status = "processed"
+    db.commit()
+
+
+def _human_reason(verdict, tool_name: str, extracted: dict) -> str:
+    """Пустая строка означает, что вмешательство человека не требуется."""
+    if verdict is not None and verdict.status != "verified":
+        return {
+            "needs_review": "Проверка подтвердила не все утверждения ответа",
+            "rejected": "Ответ не прошёл проверку на искажения и не был отправлен",
+            "insufficient": "В базе знаний нет подходящего материала для ответа",
+        }.get(verdict.status, "Проверка ответа завершилась с замечаниями")
+
+    if extracted.get("confidence", 1.0) < 0.6:
+        return "Модель не уверена в разборе обращения"
+
+    if extracted.get("priority") == "P1":
+        return "Критический приоритет: решение принимает человек"
+
+    if tool_name == "create_ticket" and verdict is None:
+        # Заявка не содержит текста для пользователя, проверять в ней нечего,
+        # но маршрутизация по команде остаётся решением человека при высоком
+        # приоритете. В остальных случаях заявка уходит в работу сама.
+        return ""
+
+    return ""

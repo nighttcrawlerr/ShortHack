@@ -4,6 +4,7 @@ import type {
   ApplyRequest, Dictionaries, MessageDetail, MessageListItem, SimilarTicket,
 } from '../types'
 import { ActionPanel } from '../components/ActionPanel'
+import { Outcome } from '../components/Outcome'
 import { AgentTrace } from '../components/AgentTrace'
 import { AnalysisCard } from '../components/AnalysisCard'
 import { CategoryBadge, ChannelBadge, PriorityBadge } from '../components/Badge'
@@ -170,7 +171,7 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
             key={message.id}
             className={`msg ${selected === message.id ? 'selected' : ''} ${
               message.status === 'processed' ? 'processed' : ''
-            }`}
+            } ${message.needs_human ? 'needs-human' : ''}`}
             onClick={() => onSelect(message.id)}
           >
             <div className="msg-top">
@@ -186,6 +187,8 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
               <div className="msg-tags">
                 <CategoryBadge code={message.category} items={dicts?.categories} />
                 <PriorityBadge code={message.priority} items={dicts?.priorities} />
+                {message.needs_human && <span className="badge warn">нужен человек</span>}
+                {message.auto_sent && <span className="badge ok">отправлено</span>}
               </div>
             )}
           </div>
@@ -261,14 +264,30 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
             {flash && <div className="notice ok">{flash}</div>}
             <AnalysisCard analysis={analysis} dicts={dicts} />
             {verification && <VerificationPanel verification={verification} />}
-            <ActionPanel
-              analysis={analysis}
-              tickets={detail.tickets}
-              outbox={detail.outbox}
-              dicts={dicts}
-              busy={busy}
-              onApply={apply}
-            />
+            {analysis.auto_sent ? (
+              <Outcome
+                analysis={analysis}
+                tickets={detail.tickets}
+                outbox={detail.outbox}
+                dicts={dicts}
+              />
+            ) : (
+              <>
+                {analysis.human_reason && (
+                  <div className="notice warn">
+                    <b>Нужен человек.</b> {analysis.human_reason}. Отправка остановлена.
+                  </div>
+                )}
+                <ActionPanel
+                  analysis={analysis}
+                  tickets={detail.tickets}
+                  outbox={detail.outbox}
+                  dicts={dicts}
+                  busy={busy}
+                  onApply={apply}
+                />
+              </>
+            )}
             <AgentTrace steps={detail.steps} names={dicts?.step_names} />
           </div>
         )}

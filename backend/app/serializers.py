@@ -37,6 +37,8 @@ def list_item(message: Message) -> MessageListItem:
         category=analysis.category if analysis else None,
         priority=analysis.priority if analysis else None,
         suggested_action=analysis.suggested_action if analysis else None,
+        auto_sent=bool(analysis and analysis.auto_sent),
+        needs_human=bool(analysis and not analysis.auto_sent and message.status == "analyzed"),
     )
 
 

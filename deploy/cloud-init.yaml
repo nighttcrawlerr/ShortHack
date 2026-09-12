@@ -25,15 +25,17 @@ write_files:
     permissions: '0640'
     content: |
       GIT_REPO=https://github.com/nighttcrawlerr/ShortHack
-      LLM_PROVIDER=mock
-      LLM_BASE_URL=
-      LLM_API_KEY=
-      LLM_MODEL=GigaChat-2-Pro
+      LLM_PROVIDER=yandex
+      LLM_BASE_URL=https://llm.api.cloud.yandex.net/v1
+      LLM_API_KEY=ВПИШИТЕ_КЛЮЧ
+      LLM_FOLDER_ID=ВПИШИТЕ_ИДЕНТИФИКАТОР_КАТАЛОГА
+      LLM_MODEL=yandexgpt-5-pro
       LLM_TOOLS=auto
-      LLM_TIMEOUT=30
+      LLM_TIMEOUT=60
       LLM_FALLBACK_TO_MOCK=true
       EMBEDDINGS_PROVIDER=auto
       VERIFY_WITH_MODEL=true
+      AUTO_SEND=true
 
   - path: /etc/systemd/system/supportpilot.service
     content: |
@@ -97,12 +99,14 @@ write_files:
         echo "LLM_PROVIDER=$LLM_PROVIDER"
         echo "LLM_BASE_URL=$LLM_BASE_URL"
         echo "LLM_API_KEY=$LLM_API_KEY"
+        echo "LLM_FOLDER_ID=$LLM_FOLDER_ID"
         echo "LLM_MODEL=$LLM_MODEL"
         echo "LLM_TOOLS=$LLM_TOOLS"
         echo "LLM_TIMEOUT=$LLM_TIMEOUT"
         echo "LLM_FALLBACK_TO_MOCK=$LLM_FALLBACK_TO_MOCK"
         echo "EMBEDDINGS_PROVIDER=$EMBEDDINGS_PROVIDER"
         echo "VERIFY_WITH_MODEL=$VERIFY_WITH_MODEL"
+        echo "AUTO_SEND=$AUTO_SEND"
       } > /opt/supportpilot/app/backend/.env
 
       chown -R pilot:pilot /opt/supportpilot

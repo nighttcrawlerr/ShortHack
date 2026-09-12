@@ -27,6 +27,8 @@ class OpenAICompatibleProvider(LLMClient):
         self.flavour = (flavour or settings.llm_provider).lower()
         self.base_url = (base_url or settings.llm_base_url).rstrip("/")
         self.model_name = model or settings.llm_model or "не задана"
+        if self.flavour == "yandex" and not self.model_name.startswith("gpt://"):
+            self.model_name = f"gpt://{settings.llm_folder_id}/{self.model_name}/latest"
         self.name = self.flavour
         self._token: str | None = None
         self._token_expires_at: float = 0.0
@@ -57,10 +59,24 @@ class OpenAICompatibleProvider(LLMClient):
 
     # --- низкий уровень ----------------------------------------------------
 
+    @property
+    def short_name(self) -> str:
+        """gpt://<каталог>/qwen3/latest → qwen3, чтобы не светить каталог в интерфейсе."""
+        if self.model_name.startswith(("gpt://", "emb://")):
+            parts = self.model_name.split("/")
+            return parts[3] if len(parts) > 3 else self.model_name
+        return self.model_name
+
+    def auth_header(self) -> str:
+        """Yandex Cloud принимает ключ сервисного аккаунта, а не токен Bearer."""
+        if self.flavour == "yandex":
+            return f"Api-Key {settings.llm_api_key}"
+        return f"Bearer {self._bearer()}"
+
     def _post(self, payload: dict) -> dict:
         url = f"{self.base_url}/chat/completions"
         headers = {
-            "Authorization": f"Bearer {self._bearer()}",
+            "Authorization": self.auth_header(),
             "Content-Type": "application/json",
         }
         last_error: Exception | None = None
@@ -123,7 +139,7 @@ class OpenAICompatibleProvider(LLMClient):
                 parsed = self._repair(system_with_schema, text)
             if parsed is None:
                 raise LLMError("Модель не вернула разбираемый JSON")
-            note_success(self.model_name)
+            note_success(self.short_name)
             return parsed, int((time.perf_counter() - started) * 1000)
         except Exception as exc:  # noqa: BLE001  падать нельзя, есть запасной путь
             result, _ = self._fallback(exc, "complete_json", context, system, user, schema)
@@ -178,7 +194,7 @@ class OpenAICompatibleProvider(LLMClient):
             arguments = call.get("arguments")
             if isinstance(arguments, str):
                 arguments = parse_json_loose(arguments) or {}
-            note_success(self.model_name)
+            note_success(self.short_name)
             return (
                 {"name": call["name"], "arguments": arguments or {}},
                 int((time.perf_counter() - started) * 1000),

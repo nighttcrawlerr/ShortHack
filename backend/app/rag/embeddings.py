@@ -8,6 +8,7 @@ none     — эмбеддинги отключены, поиск остаётс�
 поиск продолжает работать на BM25, просто чуть хуже на перефразировках.
 """
 import math
+import time
 from typing import Sequence
 
 import httpx
@@ -24,6 +25,85 @@ class Embedder:
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
         return [[] for _ in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        """По умолчанию запрос кодируется той же моделью, что и документы."""
+        vectors = self.embed([text])
+        return vectors[0] if vectors else []
+
+
+class YandexEmbedder(Embedder):
+    """Эмбеддинги Yandex Cloud.
+
+    Модели для документа и для запроса разные: это несимметричный поиск,
+    когда короткий вопрос и длинный фрагмент кодируются по-разному.
+    На практике это заметно точнее, чем одна модель на оба случая.
+    Пакетная отправка не поддерживается, тексты уходят по одному.
+    """
+
+    name = "yandex"
+
+    def available(self) -> bool:
+        return bool(
+            settings.llm_api_key
+            and settings.llm_folder_id
+            and settings.llm_provider.lower() == "yandex"
+        )
+
+    # Сервис ограничивает частоту запросов, а тексты уходят по одному.
+    # Небольшая выдержка между вызовами дешевле, чем ловить отказы и ждать
+    # нарастающую паузу на каждом втором фрагменте.
+    PAUSE = 0.15
+    RETRIES = 4
+
+    def _one(self, text: str, model: str) -> list[float]:
+        url = f"{settings.llm_base_url.rstrip('/')}/embeddings"
+        payload = {
+            "model": f"emb://{settings.llm_folder_id}/{model}/latest",
+            "input": [text],
+        }
+        headers = {
+            "Authorization": f"Api-Key {settings.llm_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        delay = 0.5
+        last: Exception | None = None
+        for attempt in range(self.RETRIES):
+            try:
+                response = httpx.post(
+                    url, headers=headers, json=payload, timeout=settings.llm_timeout
+                )
+                if response.status_code == 429:
+                    last = RuntimeError("Превышена частота запросов к модели эмбеддингов")
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                response.raise_for_status()
+                return response.json()["data"][0]["embedding"]
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 429 and attempt < self.RETRIES - 1:
+                    last = exc
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                last = exc
+                time.sleep(delay)
+                delay *= 2
+        raise RuntimeError(f"Эмбеддинги недоступны: {last}")
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        vectors = []
+        for index, text in enumerate(texts):
+            if index:
+                time.sleep(self.PAUSE)
+            vectors.append(self._one(text, settings.yandex_embedding_doc))
+        return vectors
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._one(text, settings.yandex_embedding_query)
 
 
 class GigaChatEmbedder(Embedder):
@@ -79,6 +159,8 @@ def get_embedder(token_provider=None) -> Embedder:
     choice = (settings.embeddings_provider or "auto").lower()
 
     candidates: list[Embedder] = []
+    if choice in ("auto", "yandex"):
+        candidates.append(YandexEmbedder())
     if choice in ("auto", "gigachat") and token_provider is not None:
         candidates.append(GigaChatEmbedder(token_provider))
     if choice in ("auto", "ollama"):

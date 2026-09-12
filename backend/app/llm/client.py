@@ -87,7 +87,7 @@ def get_llm_client() -> LLMClient:
     provider = (settings.llm_provider or "mock").lower()
     ready = bool(settings.llm_api_key and settings.llm_base_url)
 
-    if provider in ("openai", "gigachat") and ready:
+    if provider in ("openai", "gigachat", "yandex") and ready:
         return OpenAICompatibleProvider()
 
     if provider == "ollama" and ollama_ready():
@@ -119,7 +119,7 @@ def llm_status() -> dict:
     if _state["mode"] is None:
         provider = (settings.llm_provider or "mock").lower()
         ready = bool(settings.llm_api_key and settings.llm_base_url)
-        if provider in ("openai", "gigachat") and ready:
+        if provider in ("openai", "gigachat", "yandex") and ready:
             return {
                 "mode": "live",
                 "model": settings.llm_model or "не задана",

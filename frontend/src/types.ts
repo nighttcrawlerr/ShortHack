@@ -38,6 +38,8 @@ export interface MessageListItem {
   category: string | null
   priority: string | null
   suggested_action: string | null
+  auto_sent: boolean
+  needs_human: boolean
 }
 
 export interface Message {
@@ -113,6 +115,8 @@ export interface Analysis {
   passages: Passage[]
   verification: Verification | null
   retrieval_mode: string
+  auto_sent: boolean
+  human_reason: string
   model: string
   latency_ms: number
   created_at: string

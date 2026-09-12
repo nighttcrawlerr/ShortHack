@@ -30,6 +30,8 @@ class MessageListItem(BaseModel):
     category: str | None = None
     priority: str | None = None
     suggested_action: str | None = None
+    auto_sent: bool = False
+    needs_human: bool = False
 
 
 class MissingField(BaseModel):
@@ -62,6 +64,8 @@ class AnalysisOut(BaseModel):
     passages: list[dict[str, Any]] = Field(default_factory=list)
     verification: dict[str, Any] | None = None
     retrieval_mode: str = "лексический"
+    auto_sent: bool = False
+    human_reason: str = ""
     model: str
     latency_ms: int
     created_at: str

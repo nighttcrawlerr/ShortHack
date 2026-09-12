@@ -81,7 +81,7 @@ class Retriever:
         query_vector: list[float] = []
         if self.embedder.available():
             try:
-                query_vector = self.embedder.embed([query])[0]
+                query_vector = self.embedder.embed_query(query)
             except Exception:  # noqa: BLE001  поиск обязан работать и без векторов
                 query_vector = []
         if query_vector:
