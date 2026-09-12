@@ -623,3 +623,14 @@ textarea { resize: vertical; font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .typing span { animation: none; opacity: .6; }
 }
+
+/* --- заголовок отдельной страницы пользователя ------------------------ */
+
+.topbar-title { font-size: 14px; color: var(--muted); }
+
+.topbar-link {
+  font-size: 13px; color: var(--muted); text-decoration: none;
+  padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.topbar-link:hover { color: var(--accent-text); border-color: var(--accent); }
