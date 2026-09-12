@@ -4,6 +4,8 @@
 человеку, у которого не работает VPN, они не нужны и только пугают.
 Он видит то же, что увидел бы в письме от поддержки.
 """
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -105,6 +107,38 @@ def _cited(analysis) -> set[int]:
     }
 
 
+GREETINGS = re.compile(
+    r"^\s*(здравствуйте|добрый день|добрый вечер|доброе утро|привет|здрасте)"
+    r"[!,.\s]*",
+    re.I,
+)
+
+
+def _subject(text: str, category: str | None) -> str:
+    """Тема для инбокса оператора.
+
+    Первая строка обращения почти всегда начинается с приветствия и обрывается
+    на полуслове, если резать по числу символов. Приветствие убираем, режем
+    по границе слова.
+    """
+    first = ""
+    for line in text.splitlines():
+        cleaned = GREETINGS.sub("", line).strip()
+        if len(cleaned) > 12:
+            first = cleaned
+            break
+    if not first:
+        first = GREETINGS.sub("", text).strip() or text.strip()
+
+    limit = 58 if category else 78
+    if len(first) > limit:
+        cut = first[:limit]
+        space = cut.rfind(" ")
+        first = (cut[:space] if space > limit // 2 else cut).rstrip(" ,;:-") + "…"
+
+    return f"{label_of(CATEGORIES, category)}: {first}" if category else first
+
+
 @router.get("/categories")
 def categories() -> dict:
     return {"categories": CATEGORIES, "greeting": GREETING}
@@ -131,11 +165,7 @@ def ask(payload: PortalAskRequest, db: Session = Depends(get_db)) -> PortalReply
         return _outcome(db, message)
 
     category = payload.category if payload.category in CATEGORY_CODES else None
-    subject = (
-        f"{label_of(CATEGORIES, category)}: {text.splitlines()[0][:60]}"
-        if category
-        else text.splitlines()[0][:80]
-    )
+    subject = _subject(text, category)
 
     message = Message(
         channel="email",
