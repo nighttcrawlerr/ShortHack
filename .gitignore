@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Секреты
+.env
+backend/.env
+frontend/.env
+
+# ОС и редакторы
+.DS_Store
+.idea/
+.vscode/
+
+# Рабочие файлы разбора кейса
+pages/
+case.pdf
+reglament.pdf
