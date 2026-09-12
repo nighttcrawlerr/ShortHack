@@ -59,6 +59,9 @@ class AnalysisOut(BaseModel):
     similar_ticket_ids: list[int] = Field(default_factory=list)
     kb_article_ids: list[int] = Field(default_factory=list)
     mass_incident: bool = False
+    passages: list[dict[str, Any]] = Field(default_factory=list)
+    verification: dict[str, Any] | None = None
+    retrieval_mode: str = "лексический"
     model: str
     latency_ms: int
     created_at: str
@@ -107,6 +110,8 @@ class OutboxOut(BaseModel):
     subject: str
     body: str
     questions: list[str] = Field(default_factory=list)
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    verification: dict[str, Any] | None = None
     status: str
     created_at: str
 
@@ -172,7 +177,32 @@ class HealthOut(BaseModel):
     status: str
     llm: str
     model: str
+    llm_note: str | None = None
+    retrieval: str
+    embedder: str
+    kb_chunks: int
     db_messages: int
+
+
+class RagHit(BaseModel):
+    chunk_id: int
+    article_id: int
+    title: str
+    text: str
+    category: str
+    service: str
+    source: str
+    score: float
+    lexical_rank: int | None = None
+    dense_rank: int | None = None
+    matched_terms: list[str] = Field(default_factory=list)
+
+
+class RagResponse(BaseModel):
+    query: str
+    mode: str
+    embedder: str
+    hits: list[RagHit]
 
 
 class CountItem(BaseModel):

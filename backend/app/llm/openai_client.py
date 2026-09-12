@@ -22,16 +22,19 @@ class LLMError(RuntimeError):
 class OpenAICompatibleProvider(LLMClient):
     name = "openai"
 
-    def __init__(self) -> None:
-        self.base_url = settings.llm_base_url.rstrip("/")
-        self.model_name = settings.llm_model or "не задана"
+    def __init__(self, base_url: str | None = None, model: str | None = None,
+                 flavour: str | None = None) -> None:
+        self.flavour = (flavour or settings.llm_provider).lower()
+        self.base_url = (base_url or settings.llm_base_url).rstrip("/")
+        self.model_name = model or settings.llm_model or "не задана"
+        self.name = self.flavour
         self._token: str | None = None
         self._token_expires_at: float = 0.0
 
     # --- авторизация -------------------------------------------------------
 
     def _bearer(self) -> str:
-        if settings.llm_provider.lower() != "gigachat":
+        if self.flavour != "gigachat":
             return settings.llm_api_key
         if self._token and time.time() < self._token_expires_at - 60:
             return self._token
@@ -68,7 +71,7 @@ class OpenAICompatibleProvider(LLMClient):
                     headers=headers,
                     json=payload,
                     timeout=settings.llm_timeout,
-                    verify=settings.llm_provider.lower() != "gigachat",
+                    verify=self.flavour != "gigachat",
                 )
                 if response.status_code >= 500:
                     last_error = LLMError(f"Модель вернула {response.status_code}")
@@ -103,7 +106,7 @@ class OpenAICompatibleProvider(LLMClient):
             f"{json.dumps(schema, ensure_ascii=False)}"
         )
         payload = {
-            "model": settings.llm_model,
+            "model": self.model_name,
             "temperature": 0.2,
             "messages": [
                 {"role": "system", "content": system_with_schema},
@@ -120,7 +123,7 @@ class OpenAICompatibleProvider(LLMClient):
                 parsed = self._repair(system_with_schema, text)
             if parsed is None:
                 raise LLMError("Модель не вернула разбираемый JSON")
-            note_success(settings.llm_model)
+            note_success(self.model_name)
             return parsed, int((time.perf_counter() - started) * 1000)
         except Exception as exc:  # noqa: BLE001  падать нельзя, есть запасной путь
             result, _ = self._fallback(exc, "complete_json", context, system, user, schema)
@@ -131,7 +134,7 @@ class OpenAICompatibleProvider(LLMClient):
         try:
             data = self._post(
                 {
-                    "model": settings.llm_model,
+                    "model": self.model_name,
                     "temperature": 0,
                     "messages": [
                         {"role": "system", "content": system},
@@ -155,7 +158,7 @@ class OpenAICompatibleProvider(LLMClient):
         self, system: str, user: str, tools: list[dict], context: dict[str, Any] | None = None
     ) -> tuple[dict, int]:
         payload = {
-            "model": settings.llm_model,
+            "model": self.model_name,
             "temperature": 0.2,
             "messages": [
                 {"role": "system", "content": system},
@@ -175,7 +178,7 @@ class OpenAICompatibleProvider(LLMClient):
             arguments = call.get("arguments")
             if isinstance(arguments, str):
                 arguments = parse_json_loose(arguments) or {}
-            note_success(settings.llm_model)
+            note_success(self.model_name)
             return (
                 {"name": call["name"], "arguments": arguments or {}},
                 int((time.perf_counter() - started) * 1000),

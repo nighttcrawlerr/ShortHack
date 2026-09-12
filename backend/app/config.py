@@ -23,6 +23,21 @@ class Settings(BaseSettings):
     llm_timeout: int = 30
     llm_fallback_to_mock: bool = True
 
+    # Локальная модель как запасной путь, если внешний API недоступен
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:7b-instruct"
+    embedding_model: str = "bge-m3"
+
+    # auto | gigachat | ollama | none
+    embeddings_provider: str = "auto"
+
+    # Порог достоверности: ниже него ответ не показывается как готовый
+    verification_threshold: float = 0.7
+
+    # Второй слой проверки — отдельный вызов модели. Выключается,
+    # если важнее скорость, чем полнота проверки.
+    verify_with_model: bool = True
+
     database_url: str = f"sqlite:///{BACKEND_DIR / 'supportpilot.db'}"
     cors_origins: list[str] = [
         "http://localhost:5173",

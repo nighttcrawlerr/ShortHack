@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agent import search, tools
+from app.agent import roles, search, tools
 from app.config import settings
 from app.dictionaries import (
     ACTION_CODES,
@@ -20,6 +20,7 @@ from app.dictionaries import (
 from app.llm import prompts
 from app.llm.client import get_llm_client
 from app.models import AgentStep, Analysis, Message
+from app.rag.retriever import Retriever
 
 PREVIEW = 500
 
@@ -257,13 +258,30 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     )
 
     t0 = time.perf_counter()
-    kb = search.search_kb(db, query_text, extracted["category"])
+    retriever = Retriever(db)
+    passages = [
+        p.as_dict()
+        for p in retriever.search(query_text, extracted["category"], limit=4)
+    ]
+    kb = [
+        {
+            "id": p["article_id"],
+            "title": p["title"],
+            "excerpt": p["text"][:200],
+            "score": p["score"],
+        }
+        for p in passages
+    ]
     trace.add(
         "tool", "search_knowledge_base",
-        f"{extracted['category']} / {extracted['service']}",
-        f"найдено статей: {len(kb)}" + (f", лучшая «{kb[0]['title']}»" if kb else ""),
+        f"{retriever.mode()} поиск: {extracted['category']} / {extracted['service']}",
+        f"фрагментов: {len(passages)}" + (f", лучший «{passages[0]['title']}»" if passages else ""),
         int((time.perf_counter() - t0) * 1000),
     )
+
+    analysis.passages = passages
+    analysis.retrieval_mode = retriever.mode()
+    db.commit()
 
     mass, mass_ids = search.detect_mass_incident(
         db, extracted["category"], extracted["service"], exclude_message_id=message.id
@@ -277,6 +295,47 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
             "name": "ask_clarification" if extracted["missing_fields"] else "create_ticket",
             "arguments": {},
         }
+
+    # Ответ пользователю пишет отдельная роль и только по найденным фрагментам,
+    # после чего его проверяет другая роль. Если проверка не пройдена,
+    # ответ не отправляется: обращение уходит человеку с заявкой.
+    verdict = None
+    if chosen["name"] == "draft_reply":
+        if not passages:
+            trace.add("tool", "verify_answer", "фрагментов не найдено",
+                      "отвечать не на чем, переключаюсь на заявку", 0)
+            chosen = {"name": "create_ticket", "arguments": {}}
+        else:
+            draft, verdict = roles.compose_and_verify(
+                client, message, extracted, passages, trace
+            )
+            if verdict.status in ("verified", "needs_review") and not draft["insufficient"]:
+                chosen["arguments"] = {
+                    "subject": chosen.get("arguments", {}).get(
+                        "subject", "Ответ по вашему обращению"
+                    ),
+                    "body": draft["answer"],
+                    "kb_used": [
+                        passages[n - 1]["article_id"]
+                        for n in draft["used_sources"]
+                        if 1 <= n <= len(passages)
+                    ],
+                }
+            else:
+                reason = (
+                    "нечем ответить по базе знаний"
+                    if draft["insufficient"]
+                    else f"ответ отклонён проверкой ({verdict.status})"
+                )
+                trace.add("tool", "guard", reason,
+                          "готовый ответ не отправляется, обращение уходит человеку", 0)
+                chosen = {
+                    "name": "ask_clarification" if extracted["missing_fields"] else "create_ticket",
+                    "arguments": {},
+                }
+
+    analysis.verification = verdict.as_dict() if verdict is not None else None
+    db.commit()
 
     t0 = time.perf_counter()
     try:
@@ -296,7 +355,7 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     )
 
     analysis.suggested_action = tool_name
-    analysis.action_reason = _action_reason(tool_name, extracted, similar, kb, mass)
+    analysis.action_reason = _action_reason(tool_name, extracted, similar, kb, mass, verdict)
     analysis.similar_ticket_ids = [item["id"] for item in similar]
     analysis.kb_article_ids = analysis.kb_article_ids or [item["id"] for item in kb]
     analysis.mass_incident = mass
@@ -311,7 +370,19 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     return analysis
 
 
-def _action_reason(action: str, extracted: dict, similar: list, kb: list, mass: bool) -> str:
+def _action_reason(action: str, extracted: dict, similar: list, kb: list,
+                   mass: bool, verdict=None) -> str:
+    if verdict is not None and verdict.status not in ("verified", "needs_review"):
+        return (
+            "Черновик ответа не прошёл проверку на искажения, поэтому вместо "
+            "отправки готового текста обращение передаётся человеку."
+        )
+    if action == "draft_reply" and verdict is not None:
+        title = kb[0]["title"] if kb else "база знаний"
+        return (
+            f"Решение описано в источнике «{title}». Ответ проверен: "
+            f"{verdict.checks.get('cited_share', 0):.0%} утверждений подтверждены источниками."
+        )
     if action == "ask_clarification":
         fields = ", ".join(item["field"] for item in extracted["missing_fields"]) or "деталей"
         return f"В обращении не хватает данных: {fields}. Без них исполнитель не сможет начать."

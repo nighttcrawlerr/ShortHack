@@ -87,6 +87,10 @@ class Analysis(Base):
     kb_article_ids: Mapped[list] = mapped_column(JSONText, default=list)
     mass_incident: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    passages: Mapped[list] = mapped_column(JSONText, default=list)
+    verification: Mapped[dict | None] = mapped_column(JSONText, nullable=True)
+    retrieval_mode: Mapped[str] = mapped_column(String(20), default="лексический")
+
     model: Mapped[str] = mapped_column(String(80), default="mock")
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     raw_llm: Mapped[dict | None] = mapped_column(JSONText, nullable=True)
@@ -133,6 +137,12 @@ class KBArticle(Base):
     service: Mapped[str] = mapped_column(String(200), default="")
     keywords: Mapped[list] = mapped_column(JSONText, default=list)
     body: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(400), default="")
+    origin: Mapped[str] = mapped_column(String(16), default="demo")
+
+    chunks: Mapped[list["KBChunk"]] = relationship(
+        cascade="all, delete-orphan", order_by="KBChunk.ordinal"
+    )
 
 
 class AgentStep(Base):
@@ -163,7 +173,31 @@ class Outbox(Base):
     subject: Mapped[str] = mapped_column(String(300), default="")
     body: Mapped[str] = mapped_column(Text, default="")
     questions: Mapped[list] = mapped_column(JSONText, default=list)
+    sources: Mapped[list] = mapped_column(JSONText, default=list)
+    verification: Mapped[dict | None] = mapped_column(JSONText, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="draft")
     created_at: Mapped[str] = mapped_column(String(40), default=now_iso)
 
     message: Mapped["Message"] = relationship(back_populates="outbox")
+
+
+class KBChunk(Base):
+    """Фрагмент статьи базы знаний — единица поиска и цитирования.
+
+    Ответ помощника обязан опираться на конкретные фрагменты. Именно они
+    показываются оператору и проверяются на искажения.
+    """
+
+    __tablename__ = "kb_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("kb_articles.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer, default=0)
+    title: Mapped[str] = mapped_column(String(300), default="")
+    text: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(32), default="other")
+    service: Mapped[str] = mapped_column(String(200), default="")
+    source: Mapped[str] = mapped_column(String(400), default="")
+    tokens: Mapped[list] = mapped_column(JSONText, default=list)
+    embedding: Mapped[list | None] = mapped_column(JSONText, nullable=True)
+    embedder: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -152,3 +152,79 @@ def sleep_a_little() -> int:
     started = time.perf_counter()
     time.sleep(0.35)
     return int((time.perf_counter() - started) * 1000)
+
+
+def compose(analysis: dict, passages: list, body: str, repair: bool = False) -> dict:
+    """Заглушка автора ответа: собирает ответ из первого фрагмента со ссылкой.
+
+    Намеренно не пытается быть умной. Её задача — дать проверяющему настоящий
+    вход той же формы, что и живая модель, чтобы весь конвейер можно было
+    отлаживать и показывать без ключа.
+    """
+    if not passages:
+        return {
+            "answer": "",
+            "used_sources": [],
+            "insufficient": True,
+            "confidence": 0.0,
+            "missing_info": "В базе знаний нет подходящей статьи",
+        }
+
+    top = passages[0]
+    lines = [line.strip() for line in (top.get("text") or "").splitlines() if line.strip()]
+    steps = [line for line in lines if re.match(r"^\d+[.)]\s", line)][:5]
+
+    if steps:
+        instruction = "\n".join(f"{step} [1]" for step in steps)
+    else:
+        sentence = next((line for line in lines[1:] if len(line) > 30), lines[-1] if lines else "")
+        instruction = f"{sentence} [1]"
+
+    answer = (
+        "Здравствуйте!\n\n"
+        "По вашему обращению есть готовая инструкция.\n\n"
+        f"{instruction}\n\n"
+        "Если шаги не помогут, ответьте на это письмо, и мы заведём заявку.\n\n"
+        "С уважением, служба технической поддержки"
+    )
+    return {
+        "answer": answer,
+        "used_sources": [1],
+        "insufficient": False,
+        "confidence": 0.5,
+        "missing_info": "",
+    }
+
+
+def verify(answer: str, passages: list) -> dict:
+    """Заглушка проверяющего: сверяет утверждения по совпадению слов.
+
+    Это не имитация вердикта, а честная грубая проверка: утверждение считается
+    подтверждённым, если больше половины его значимых слов встречаются
+    в том фрагменте, на который оно ссылается.
+    """
+    from app.agent.verifier import CITATION, split_sentences
+    from app.rag.tokens import tokenize
+
+    claims = []
+    for sentence in split_sentences(answer):
+        numbers = [int(n) for n in CITATION.findall(sentence)]
+        source = numbers[0] if numbers and 1 <= numbers[0] <= len(passages) else None
+        words = set(tokenize(CITATION.sub(" ", sentence)))
+        if not words:
+            continue
+        if source is None:
+            verdict, comment = "not_found", "Утверждение не ссылается на источник"
+        else:
+            source_words = set(tokenize(passages[source - 1].get("text", "")))
+            overlap = len(words & source_words) / len(words)
+            if overlap >= 0.5:
+                verdict = "supported"
+                comment = f"Совпадение с фрагментом {source}: {overlap:.0%} значимых слов"
+            else:
+                verdict = "not_found"
+                comment = f"Во фрагменте {source} нашлось только {overlap:.0%} слов утверждения"
+        claims.append(
+            {"text": sentence[:400], "verdict": verdict, "source": source, "comment": comment}
+        )
+    return {"claims": claims}

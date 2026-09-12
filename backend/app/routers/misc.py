@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 from app import dictionaries as dicts
 from app.db import get_db
 from app.models import Message
-from app.schemas import HealthOut, KBHitOut, SimilarTicketOut, StatsOut
+from app.schemas import (
+    HealthOut,
+    KBHitOut,
+    RagResponse,
+    SimilarTicketOut,
+    StatsOut,
+)
 
 router = APIRouter(prefix="/api", tags=["misc"])
 
@@ -14,11 +20,19 @@ router = APIRouter(prefix="/api", tags=["misc"])
 def health(db: Session = Depends(get_db)) -> HealthOut:
     from app.llm.client import llm_status
 
+    from app.models import KBChunk
+    from app.rag.retriever import Retriever
+
     status = llm_status()
+    retriever = Retriever(db)
     return HealthOut(
         status="ok",
         llm=status["mode"],
         model=status["model"],
+        llm_note=status.get("last_error"),
+        retrieval=retriever.mode(),
+        embedder=retriever.embedder.name,
+        kb_chunks=db.query(KBChunk).count(),
         db_messages=db.query(Message).count(),
     )
 
@@ -79,3 +93,36 @@ def stats(db: Session = Depends(get_db)) -> StatsOut:
     from app.stats import build_stats
 
     return build_stats(db)
+
+
+@router.get("/rag", response_model=RagResponse)
+def rag_search(
+    q: str,
+    category: str | None = None,
+    limit: int = 5,
+    db: Session = Depends(get_db),
+) -> RagResponse:
+    """Прямой доступ к поиску по базе знаний. Нужен, чтобы на защите показать,
+    что помощник берёт ответ из конкретных фрагментов, а не сочиняет его."""
+    from app.rag.retriever import Retriever
+
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Пустой запрос")
+
+    retriever = Retriever(db)
+    hits = [p.as_dict() for p in retriever.search(q, category, limit=limit)]
+    return RagResponse(
+        query=q,
+        mode=retriever.mode(),
+        embedder=retriever.embedder.name,
+        hits=hits,
+    )
+
+
+@router.post("/reindex")
+def reindex(db: Session = Depends(get_db)) -> dict:
+    """Пересобрать индекс базы знаний. Нужен после появления ключа:
+    тогда к лексическому поиску добавятся векторы."""
+    from app.rag.indexer import rebuild_index
+
+    return rebuild_index(db)

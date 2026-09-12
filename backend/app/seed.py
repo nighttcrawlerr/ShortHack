@@ -85,14 +85,23 @@ def seed_database(db: Session, wipe: bool = True) -> dict:
                 service=raw.get("service", ""),
                 keywords=raw.get("keywords", []),
                 body=raw.get("body", ""),
+                source=raw.get("source", ""),
+                origin=raw.get("origin", "demo"),
             )
         )
 
     db.commit()
+
+    from app.rag.indexer import rebuild_index
+
+    index = rebuild_index(db)
     return {
         "messages": len(raw_messages),
         "kb_articles": len(raw_kb),
         "tickets": len(raw_tickets),
+        "chunks": index["chunks"],
+        "embedded": index["embedded"],
+        "embedder": index["embedder"],
     }
 
 

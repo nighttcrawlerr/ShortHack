@@ -52,6 +52,22 @@ class LLMClient:
         raise NotImplementedError
 
 
+def ollama_ready() -> bool:
+    """Локальная модель доступна, только если служба поднята и модель скачана."""
+    import httpx
+
+    try:
+        response = httpx.get(f"{settings.ollama_url}/api/tags", timeout=2)
+        names = [m.get("name", "") for m in response.json().get("models", [])]
+    except Exception:  # noqa: BLE001
+        return False
+    wanted = settings.ollama_model
+    base = wanted.split(":")[0]
+    # Сравнение по точному имени: qwen2.5-coder не заменяет qwen2.5-instruct,
+    # это разные модели с разным назначением.
+    return any(name == wanted or name.split(":")[0] == base for name in names)
+
+
 def _mock_reason() -> str:
     if settings.llm_provider == "mock":
         return "Провайдер переключён на заглушку в настройках"
@@ -59,19 +75,27 @@ def _mock_reason() -> str:
         return "Не задан LLM_API_KEY"
     if not settings.llm_base_url:
         return "Не задан LLM_BASE_URL"
+    if settings.llm_provider.lower() == "ollama":
+        return f"Локальная модель {settings.ollama_model} ещё не скачана"
     return "Живой провайдер недоступен"
 
 
 def get_llm_client() -> LLMClient:
     from app.llm.mock_provider import MockProvider
+    from app.llm.openai_client import OpenAICompatibleProvider
 
     provider = (settings.llm_provider or "mock").lower()
     ready = bool(settings.llm_api_key and settings.llm_base_url)
 
     if provider in ("openai", "gigachat") and ready:
-        from app.llm.openai_client import OpenAICompatibleProvider
-
         return OpenAICompatibleProvider()
+
+    if provider == "ollama" and ollama_ready():
+        return OpenAICompatibleProvider(
+            base_url=f"{settings.ollama_url}/v1",
+            model=settings.ollama_model,
+            flavour="ollama",
+        )
 
     _state["mode"] = "mock"
     _state["model"] = "mock"
@@ -101,5 +125,7 @@ def llm_status() -> dict:
                 "model": settings.llm_model or "не задана",
                 "last_error": None,
             }
+        if provider == "ollama" and ollama_ready():
+            return {"mode": "live", "model": settings.ollama_model, "last_error": None}
         return {"mode": "mock", "model": "mock", "last_error": _mock_reason()}
     return dict(_state)

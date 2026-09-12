@@ -89,6 +89,8 @@ def execute_draft_reply(
 ) -> tuple[Outbox, str]:
     letter = Outbox(
         message_id=message.id,
+        sources=analysis.passages or [],
+        verification=analysis.verification,
         kind="reply",
         subject=_text(args.get("subject"), "Ответ по вашему обращению")[:300],
         body=_ensure_signature(

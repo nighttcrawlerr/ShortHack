@@ -16,6 +16,14 @@ class MockProvider(LLMClient):
         ctx = context or {}
         kind = ctx.get("kind", "extract")
 
+        if kind == "compose":
+            return mock_client.compose(
+                ctx.get("analysis", {}), ctx.get("passages", []), ctx.get("body", "")
+            ), ms
+
+        if kind == "verify":
+            return mock_client.verify(ctx.get("answer", ""), ctx.get("passages", [])), ms
+
         if kind == "decide":
             chosen = mock_client.decide(
                 ctx.get("analysis", {}),
