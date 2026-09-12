@@ -56,6 +56,46 @@ app.include_router(messages.router)
 app.include_router(tickets.router)
 
 
-@app.get("/")
-def root() -> dict:
-    return {"service": "SupportPilot", "docs": "/docs", "health": "/api/health"}
+# --- отдача собранного интерфейса ------------------------------------------
+#
+# В разработке фронтенд живёт на своём порту под Vite. В развёрнутом виде
+# собранные файлы лежат рядом, и приложение становится одним процессом
+# на одном порту: так его проще поднимать и не нужен отдельный веб-сервер.
+
+from pathlib import Path  # noqa: E402
+
+from fastapi.responses import FileResponse  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if (DIST / "index.html").exists():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    def favicon() -> FileResponse:
+        return FileResponse(DIST / "favicon.svg")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str = "") -> FileResponse:
+        """Любой неизвестный путь отдаёт страницу приложения.
+
+        Маршруты API объявлены выше и перехватываются раньше, сюда попадают
+        только обращения браузера за самой страницей.
+        """
+        candidate = DIST / path
+        if path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(DIST / "index.html")
+
+else:
+
+    @app.get("/")
+    def root() -> dict:
+        return {
+            "service": "SupportPilot",
+            "docs": "/docs",
+            "health": "/api/health",
+            "note": "Интерфейс не собран. Запустите npm run build в папке frontend",
+        }

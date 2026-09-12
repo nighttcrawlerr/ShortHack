@@ -1,0 +1,126 @@
+#cloud-config
+# Разворачивает SupportPilot на чистой виртуальной машине Yandex Cloud.
+# Всё выполняется при первой загрузке, заходить по SSH не требуется.
+#
+# Перед использованием подставьте значения в блоке write_files ниже:
+#   GIT_REPO   — адрес репозитория
+#   LLM_*      — ключ и адрес языковой модели, либо оставьте LLM_PROVIDER=mock
+
+users:
+  - name: pilot
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+
+package_update: true
+packages:
+  - python3-venv
+  - python3-pip
+  - git
+  - nginx
+  - curl
+
+write_files:
+  - path: /opt/supportpilot/env.sh
+    permissions: '0640'
+    content: |
+      GIT_REPO=https://github.com/nighttcrawlerr/ShortHack
+      LLM_PROVIDER=mock
+      LLM_BASE_URL=
+      LLM_API_KEY=
+      LLM_MODEL=GigaChat-2-Pro
+      LLM_TOOLS=auto
+      LLM_TIMEOUT=30
+      LLM_FALLBACK_TO_MOCK=true
+      EMBEDDINGS_PROVIDER=auto
+      VERIFY_WITH_MODEL=true
+
+  - path: /etc/systemd/system/supportpilot.service
+    content: |
+      [Unit]
+      Description=SupportPilot
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=pilot
+      WorkingDirectory=/opt/supportpilot/app/backend
+      ExecStart=/opt/supportpilot/app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/nginx/sites-available/supportpilot
+    content: |
+      server {
+        listen 80 default_server;
+        server_name _;
+        client_max_body_size 4m;
+
+        location / {
+          proxy_pass http://127.0.0.1:8000;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 120s;
+        }
+      }
+
+  - path: /opt/supportpilot/install.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      source /opt/supportpilot/env.sh
+
+      # Node нужен один раз, чтобы собрать интерфейс
+      curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+      apt-get install -y nodejs
+
+      rm -rf /opt/supportpilot/app
+      git clone --depth 1 "$GIT_REPO" /opt/supportpilot/app
+
+      cd /opt/supportpilot/app/frontend
+      npm ci --no-audit --no-fund
+      npm run build
+
+      cd /opt/supportpilot/app/backend
+      python3 -m venv .venv
+      .venv/bin/pip install --upgrade pip
+      .venv/bin/pip install -r requirements.txt
+
+      # Настройки приложения собираются из env.sh
+      {
+        echo "LLM_PROVIDER=$LLM_PROVIDER"
+        echo "LLM_BASE_URL=$LLM_BASE_URL"
+        echo "LLM_API_KEY=$LLM_API_KEY"
+        echo "LLM_MODEL=$LLM_MODEL"
+        echo "LLM_TOOLS=$LLM_TOOLS"
+        echo "LLM_TIMEOUT=$LLM_TIMEOUT"
+        echo "LLM_FALLBACK_TO_MOCK=$LLM_FALLBACK_TO_MOCK"
+        echo "EMBEDDINGS_PROVIDER=$EMBEDDINGS_PROVIDER"
+        echo "VERIFY_WITH_MODEL=$VERIFY_WITH_MODEL"
+      } > /opt/supportpilot/app/backend/.env
+
+      chown -R pilot:pilot /opt/supportpilot
+
+      ln -sf /etc/nginx/sites-available/supportpilot /etc/nginx/sites-enabled/supportpilot
+      rm -f /etc/nginx/sites-enabled/default
+      nginx -t && systemctl restart nginx
+
+      systemctl daemon-reload
+      systemctl enable --now supportpilot
+
+      # Ждём, пока поднимется, и наполняем очередь разобранными обращениями,
+      # чтобы жюри открывало приложение на готовых данных
+      for _ in $(seq 1 30); do
+        curl -sf http://127.0.0.1:8000/api/health >/dev/null && break
+        sleep 2
+      done
+      curl -sf -X POST http://127.0.0.1:8000/api/messages/analyze-all >/dev/null || true
+
+runcmd:
+  - bash /opt/supportpilot/install.sh 2>&1 | tee /var/log/supportpilot-install.log

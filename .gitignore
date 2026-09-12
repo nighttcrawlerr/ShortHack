@@ -20,7 +20,8 @@ frontend/.env
 .idea/
 .vscode/
 
-# Рабочие файлы разбора кейса
-pages/
-case.pdf
-reglament.pdf
+# Рабочие файлы разбора кейса.
+# Пути от корня: иначе правило совпадает с frontend/src/pages
+/pages/
+/case.pdf
+/reglament.pdf
