@@ -206,3 +206,25 @@ class KBChunk(Base):
     tokens: Mapped[list] = mapped_column(JSONText, default=list)
     embedding: Mapped[list | None] = mapped_column(JSONText, nullable=True)
     embedder: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class Correction(Base):
+    """Правка оператора: что предложил агент и на что это заменил человек.
+
+    Это единственные настоящие обучающие данные, которые у нас есть.
+    Диалоги операторов с клиентами закрыты, а вот решения оператора
+    в этой системе — наши собственные и накапливаются с первого дня работы.
+    """
+
+    __tablename__ = "corrections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"))
+    field: Mapped[str] = mapped_column(String(32), default="")
+    before: Mapped[str] = mapped_column(Text, default="")
+    after: Mapped[str] = mapped_column(Text, default="")
+    # Короткая выжимка обращения: по ней правка становится примером,
+    # а не просто записью «было P3, стало P1».
+    context: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(32), default="other")
+    created_at: Mapped[str] = mapped_column(String(40), default=now_iso)

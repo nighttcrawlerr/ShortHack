@@ -45,8 +45,12 @@ def format_analysis(analysis: dict) -> str:
 
 
 def compose_answer(client, message, analysis: dict, passages: list[dict],
-                   repair_issues: str | None = None) -> tuple[dict, int]:
+                   repair_issues: str | None = None, db=None) -> tuple[dict, int]:
     system = prompts.SYSTEM_COMPOSE
+    if db is not None:
+        from app import learning
+
+        system += learning.style_examples(db)
     if repair_issues:
         system = system + prompts.REPAIR_SUFFIX.format(issues=repair_issues)
 
@@ -175,9 +179,9 @@ def verify_answer(client, answer: str, passages: list[dict], message_body: str,
 
 
 def compose_and_verify(client, message, analysis: dict, passages: list[dict],
-                       trace) -> tuple[dict, verifier.Verdict]:
+                       trace, db=None) -> tuple[dict, verifier.Verdict]:
     """Сгенерировать, проверить, при провале один раз переписать с указанием ошибок."""
-    draft, ms = compose_answer(client, message, analysis, passages)
+    draft, ms = compose_answer(client, message, analysis, passages, db=db)
     trace.add(
         "llm", "compose_answer",
         f"фрагментов: {len(passages)}",
@@ -209,7 +213,7 @@ def compose_and_verify(client, message, analysis: dict, passages: list[dict],
             for issue in verdict.issues[:8]
         )
         draft, ms = compose_answer(
-            client, message, analysis, passages, repair_issues=issues_text
+            client, message, analysis, passages, repair_issues=issues_text, db=db
         )
         trace.add(
             "llm", "compose_answer",

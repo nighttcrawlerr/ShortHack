@@ -1,5 +1,5 @@
 """Служебные эндпоинты: здоровье, справочники, перезалив демо-данных."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app import dictionaries as dicts
@@ -126,3 +126,44 @@ def reindex(db: Session = Depends(get_db)) -> dict:
     from app.rag.indexer import rebuild_index
 
     return rebuild_index(db)
+
+
+@router.get("/training/corrections")
+def corrections(db: Session = Depends(get_db)) -> dict:
+    """Что система уже узнала от операторов."""
+    from app import learning
+    from app.models import Correction
+
+    rows = db.query(Correction).order_by(Correction.id.desc()).limit(50).all()
+    by_field: dict[str, int] = {}
+    for row in rows:
+        by_field[row.field] = by_field.get(row.field, 0) + 1
+
+    return {
+        "total": db.query(Correction).count(),
+        "by_field": by_field,
+        "ready_for_tuning": db.query(Correction).count() >= 500,
+        "prompt_preview": learning.examples_for(db)[:1200],
+        "recent": [
+            {
+                "field": row.field,
+                "before": row.before,
+                "after": row.after,
+                "context": row.context[:120],
+                "at": row.created_at,
+            }
+            for row in rows[:10]
+        ],
+    }
+
+
+@router.get("/training/dataset.jsonl")
+def dataset(db: Session = Depends(get_db)) -> Response:
+    """Выгрузка для дообучения. Формат Yandex Cloud: пара запрос-ответ на строку."""
+    from app import learning
+
+    return Response(
+        content=learning.dataset_jsonl(db),
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": 'attachment; filename="saluteagent-tuning.jsonl"'},
+    )

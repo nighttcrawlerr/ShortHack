@@ -130,14 +130,30 @@ def apply_decision(
     if analysis is None:
         raise HTTPException(status_code=400, detail="Обращение ещё не разобрано")
 
+    # При автоотправке заявка уже в работе, а письмо уже ушло. Оператор
+    # всё равно может поправить маршрутизацию и текст — и именно эта правка
+    # и есть обучающий пример. Поэтому берём предложенные, а если их нет,
+    # то всё, что по обращению не отклонено.
     tickets = [t for t in message.tickets if t.status == "proposed"]
+    if not tickets:
+        tickets = [t for t in message.tickets if t.status != "rejected"]
     if payload.ticket_id:
         tickets = [t for t in message.tickets if t.id == payload.ticket_id]
+
     letters = [o for o in message.outbox if o.status == "draft"]
+    if not letters:
+        letters = list(message.outbox)
     if payload.outbox_id:
         letters = [o for o in message.outbox if o.id == payload.outbox_id]
 
     if payload.decision == "reject":
+        from app import learning
+
+        learning.record(
+            db, message, "rejected",
+            analysis.suggested_action or "",
+            "оператор отклонил предложение агента",
+        )
         for ticket in tickets:
             ticket.status = "rejected"
             ticket.updated_at = now_iso()
@@ -146,7 +162,21 @@ def apply_decision(
         return build_detail(db, message)
 
     if payload.decision == "edit":
+        from app import learning
+
         overrides = payload.overrides or {}
+        # Правка оператора — обучающий пример. Записываем до применения,
+        # пока видно и то, что предложил агент, и то, на что его исправили.
+        for ticket in tickets:
+            for field in ("priority", "category", "team"):
+                if field in overrides:
+                    learning.record(
+                        db, message, field, getattr(ticket, field), str(overrides[field])
+                    )
+        for letter in letters:
+            if payload.edited_body and payload.edited_body.strip() != letter.body.strip():
+                learning.record(db, message, "body", letter.body, payload.edited_body)
+
         for ticket in tickets:
             if "category" in overrides:
                 ticket.category = safe(overrides["category"], CATEGORY_CODES, ticket.category)

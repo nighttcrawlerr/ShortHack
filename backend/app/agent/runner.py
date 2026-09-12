@@ -129,7 +129,7 @@ def _validate_extract(raw: dict) -> dict:
     }
 
 
-def _extract(client, message: Message, trace: Trace) -> dict:
+def _extract(client, message: Message, trace: Trace, db: Session = None) -> dict:
     user_prompt = prompts.USER_EXTRACT_TEMPLATE.format(
         channel_label=label_of(CHANNELS, message.channel),
         subject=message.subject or "без темы",
@@ -144,8 +144,14 @@ def _extract(client, message: Message, trace: Trace) -> dict:
         ),
         body=message.body,
     )
+    system = prompts.SYSTEM_EXTRACT
+    if db is not None:
+        from app import learning
+
+        system += learning.examples_for(db, message.client_category)
+
     raw, ms = client.complete_json(
-        prompts.SYSTEM_EXTRACT,
+        system,
         user_prompt,
         prompts.EXTRACT_SCHEMA,
         context={
@@ -279,7 +285,7 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
     trace = Trace(db, message.id)
     started = time.perf_counter()
 
-    extracted = _extract(client, message, trace)
+    extracted = _extract(client, message, trace, db)
 
     analysis = Analysis(message_id=message.id, **extracted)
     analysis.model = getattr(client, "model_name", "mock")
@@ -351,7 +357,7 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
             chosen = {"name": "create_ticket", "arguments": {}}
         else:
             draft, verdict = roles.compose_and_verify(
-                client, message, extracted, passages, trace
+                client, message, extracted, passages, trace, db=db
             )
             if verdict.status in ("verified", "needs_review") and not draft["insufficient"]:
                 chosen["arguments"] = {
