@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../api/client'
 import { Logo } from '../components/Logo'
 import type { DictItem, PortalReply, PortalStatus } from '../types'
@@ -59,6 +59,10 @@ export function PortalPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
+  // Сколько писем от поддержки уже показано. Считается по базе,
+  // а не по экрану: часть реплик на экране — заглушки ожидания,
+  // которым в переписке ничего не соответствует.
+  const shown = useRef(0)
 
   useEffect(() => {
     void api.getPortalCategories().then((d) => {
@@ -70,6 +74,37 @@ export function PortalPage() {
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth' })
   }, [turns, busy])
+
+  /** Сколько ответов поддержки лежит в переписке на сервере. */
+  const countReplies = useCallback(async (id: number) => {
+    try {
+      const thread = await api.getPortalThread(id)
+      return thread.filter((turn) => turn.role === 'assistant').length
+    } catch {
+      return shown.current
+    }
+  }, [])
+
+  // Заявку закрывает оператор, и его ответ появляется уже после того, как
+  // пользователь всё отправил. Без опроса человек сидел бы на странице
+  // с номером заявки и не узнал бы, что работы закончены.
+  useEffect(() => {
+    if (threadId === null) return
+    const timer = setInterval(async () => {
+      try {
+        const thread = await api.getPortalThread(threadId)
+        const replies = thread.filter((turn) => turn.role === 'assistant')
+        if (replies.length <= shown.current) return
+        const fresh = replies.slice(shown.current)
+        shown.current = replies.length
+        setTurns((prev) => [
+          ...prev,
+          ...fresh.map((turn) => ({ role: 'assistant' as const, text: turn.text })),
+        ])
+      } catch { /* пропущенный опрос переживём, следующий через пять секунд */ }
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [threadId])
 
   const send = async () => {
     const value = text.trim()
@@ -87,6 +122,7 @@ export function PortalPage() {
         message_id: threadId,
       })
       setThreadId(reply.message_id)
+      shown.current = await countReplies(reply.message_id)
       setTurns((prev) => [...prev, {
         role: 'assistant',
         text: reply.reply,
@@ -104,6 +140,7 @@ export function PortalPage() {
 
   const restart = () => {
     setTurns([])
+    shown.current = 0
     setThreadId(null)
     setCategory(null)
     setText('')

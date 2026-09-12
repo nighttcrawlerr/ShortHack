@@ -224,6 +224,12 @@ export type PortalStatus = 'answered' | 'ticket_created' | 'clarification' | 'pe
 
 export interface PortalSource { title: string; source: string }
 
+export interface PortalTurn {
+  role: 'user' | 'assistant'
+  text: string
+  at: string
+}
+
 export interface PortalReply {
   message_id: number
   status: PortalStatus

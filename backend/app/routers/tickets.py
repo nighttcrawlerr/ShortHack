@@ -11,7 +11,8 @@ from app.dictionaries import (
     TICKET_STATUS_CODES,
     safe,
 )
-from app.models import Ticket, now_iso
+from app.agent.tools import SIGNATURE
+from app.models import Outbox, Ticket, now_iso
 from app.schemas import TicketOut, TicketPatchRequest
 
 router = APIRouter(prefix="/api/tickets", tags=["tickets"])
@@ -65,6 +66,7 @@ def patch_ticket(
     if ticket is None:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
 
+    was = ticket.status
     if payload.status is not None:
         ticket.status = safe(payload.status, TICKET_STATUS_CODES, ticket.status)
     if payload.priority is not None:
@@ -82,5 +84,46 @@ def patch_ticket(
 
     ticket.updated_at = now_iso()
     db.commit()
+
+    _notify_requester(db, ticket, was)
+
     db.refresh(ticket)
     return TicketOut.model_validate(ticket)
+
+
+CLOSING = {"closed", "rejected"}
+
+
+def _notify_requester(db: Session, ticket: Ticket, was: str) -> None:
+    """Пишет пользователю, когда оператор закрывает его заявку.
+
+    До этого заявка закрывалась молча: человек оставлял обращение, получал
+    номер и больше не слышал ничего — ни что работы закончены, ни что
+    именно сделали. Письмо появляется в его переписке на портале.
+    """
+    if ticket.status not in CLOSING or was in CLOSING or ticket.message_id is None:
+        return
+
+    resolution = (ticket.resolution or "").strip()
+
+    if ticket.status == "closed":
+        head = f"По вашей заявке {ticket.key} работы завершены."
+        tail = "Если проблема повторится, напишите нам ещё раз."
+    else:
+        head = f"Заявка {ticket.key} закрыта без выполнения."
+        tail = "Если мы поняли вопрос неверно, напишите нам ещё раз."
+
+    parts = ["Здравствуйте!", head]
+    if resolution:
+        parts.append(resolution)
+    parts.extend([tail, SIGNATURE])
+
+    db.add(Outbox(
+        message_id=ticket.message_id,
+        ticket_id=ticket.id,
+        kind="resolution",
+        subject=f"Заявка {ticket.key} закрыта"[:300],
+        body="\n\n".join(parts),
+        status="sent",
+    ))
+    db.commit()

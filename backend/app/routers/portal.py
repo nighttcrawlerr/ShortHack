@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.dictionaries import CATEGORIES, CATEGORY_CODES, label_of
-from app.models import Message, now_iso
+from app.models import Message, Outbox, now_iso
 from app.schemas import PortalAskRequest, PortalReply, PortalTurn
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
@@ -73,16 +73,19 @@ def _outcome(db: Session, message: Message) -> PortalReply:
         )
 
     if ticket is not None:
+        body = (
+            f"Мы приняли обращение и завели заявку {ticket.key}.\n\n"
+            f"{ticket.title}\n\n"
+            "Специалист свяжется с вами. Номер заявки пригодится, "
+            "если захотите уточнить статус."
+        )
+        _remember(db, message, ticket.id, "ticket_ack",
+                  f"Заявка {ticket.key} принята", body)
         return PortalReply(
             message_id=message.id,
             status="ticket_created",
             ticket_key=ticket.key,
-            reply=(
-                f"Мы приняли обращение и завели заявку {ticket.key}.\n\n"
-                f"{ticket.title}\n\n"
-                "Специалист свяжется с вами. Номер заявки пригодится, "
-                "если захотите уточнить статус."
-            ),
+            reply=body,
             elapsed_ms=analysis.latency_ms,
         )
 
@@ -90,6 +93,26 @@ def _outcome(db: Session, message: Message) -> PortalReply:
         message_id=message.id, status="pending_human", reply=WAITING,
         elapsed_ms=analysis.latency_ms,
     )
+
+
+def _remember(db: Session, message: Message, ticket_id: int | None,
+              kind: str, subject: str, body: str) -> None:
+    """Кладёт письмо в переписку, если такого там ещё нет.
+
+    Подтверждение о заведении заявки раньше только возвращалось в ответе
+    и нигде не сохранялось: стоило пользователю обновить страницу, и от всей
+    переписки оставалось его собственное сообщение. Проверять на искажения
+    здесь нечего — текст шаблонный, модель его не писала.
+    """
+    exists = any(o.kind == kind and o.ticket_id == ticket_id for o in message.outbox)
+    if exists:
+        return
+    db.add(Outbox(
+        message_id=message.id, ticket_id=ticket_id, kind=kind,
+        subject=subject[:300], body=body, status="sent",
+    ))
+    db.commit()
+    db.refresh(message)
 
 
 def _cited(analysis) -> set[int]:
