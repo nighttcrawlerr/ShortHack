@@ -72,9 +72,9 @@ export default function App() {
           </button>
         </nav>
         <div className="topbar-right">
-          {/* Окно пользователя — отдельная страница: там другой человек
-              и другие задачи. Ссылка оставлена для быстрого перехода. */}
-          <a className="topbar-link" href="/support" target="_blank" rel="noreferrer">
+          {/* Окно пользователя — главная страница продукта.
+              Ссылка оставлена для перехода между двумя сторонами. */}
+          <a className="topbar-link" href="/" target="_blank" rel="noreferrer">
             Окно пользователя
           </a>
           {health && (

@@ -114,14 +114,24 @@ export function PortalPage() {
   return (
     <div className="portal">
       <div className="portal-inner">
-        {!started && (
-          <div className="portal-hello">
-            <div className="portal-title">Чем помочь?</div>
-            <p className="portal-greeting">{greeting}</p>
-
-            <div className="card-title" style={{ marginTop: 22 }}>
-              С чем связан вопрос
+        <div className={`portal-hello ${started ? 'compact' : ''}`}>
+          <div className="portal-avatar" aria-hidden="true">SA</div>
+          <div>
+            <div className="portal-title">
+              {started ? 'SaluteAgent на связи' : 'Здравствуйте! Я SaluteAgent'}
             </div>
+            <p className="portal-greeting">
+              {started
+                ? 'Отвечаю по инструкциям службы поддержки и показываю, откуда взят ответ.'
+                : greeting}
+            </p>
+          </div>
+        </div>
+
+        {!started && (
+          <div className="portal-pick">
+
+            <div className="card-title">С чем связан вопрос</div>
             <div className="chips">
               {categories.map((item) => (
                 <button
@@ -181,6 +191,9 @@ export function PortalPage() {
         {error && <div className="notice bad">{error}</div>}
 
         <div className="composer">
+          {/* Рамка живёт на обёртке: у textarea своя рамка отключена,
+              иначе градиент перекрывается и перелив не виден. */}
+          <div className={`composer-glow ${busy ? 'busy' : ''}`}>
           <textarea
             rows={started ? 2 : 5}
             placeholder={started
@@ -192,6 +205,7 @@ export function PortalPage() {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void send()
             }}
           />
+          </div>
           <div className="composer-row">
             <button className="btn btn-primary" disabled={busy || !text.trim()}
                     onClick={() => void send()}>

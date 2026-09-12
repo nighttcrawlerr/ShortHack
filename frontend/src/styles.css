@@ -634,3 +634,56 @@ textarea { resize: vertical; font-family: inherit; }
   white-space: nowrap;
 }
 .topbar-link:hover { color: var(--accent-text); border-color: var(--accent); }
+
+/* --- главная страница: приветствие и переливающееся поле ввода ---------- */
+
+.portal-topbar .topbar-title { margin-left: 4px; }
+
+.portal-hello { display: flex; gap: 14px; align-items: flex-start; padding-top: 14px; }
+.portal-hello.compact { padding-top: 0; padding-bottom: 2px; }
+.portal-hello.compact .portal-title { font-size: 15px; }
+.portal-hello.compact .portal-greeting { font-size: 13px; margin-top: 2px; }
+
+.portal-avatar {
+  flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; letter-spacing: .3px;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #3fb95b 55%, #7fd18f 100%);
+}
+.portal-hello.compact .portal-avatar {
+  flex-basis: 30px; width: 30px; height: 30px; border-radius: 9px; font-size: 11px;
+}
+
+.portal-pick { display: flex; flex-direction: column; gap: 10px; }
+
+/* Обёртка поля ввода: градиентная рамка, которая медленно переливается.
+   Толщина рамки задана отступом обёртки, само поле лежит поверх. */
+.composer-glow {
+  position: relative; padding: 2px; border-radius: 14px;
+  background: linear-gradient(
+    100deg,
+    var(--accent) 0%, #6ecf84 18%, var(--border) 38%,
+    var(--border) 62%, #6ecf84 82%, var(--accent) 100%
+  );
+  background-size: 300% 100%;
+  animation: glow-slide 7s linear infinite;
+}
+.composer-glow.busy { animation-duration: 1.9s; }
+
+.composer-glow textarea {
+  border: 0; border-radius: 12px; background: var(--surface);
+  display: block; width: 100%;
+}
+.composer-glow textarea:focus { outline: none; }
+
+@keyframes glow-slide {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
+/* Перелив — украшение. Если человек просил убрать движение, рамка остаётся
+   статичной, но не исчезает: она несёт смысл границы поля. */
+@media (prefers-reduced-motion: reduce) {
+  .composer-glow { animation: none; background: var(--border); }
+}
