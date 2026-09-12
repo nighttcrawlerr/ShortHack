@@ -475,7 +475,7 @@ def _route(db: Session, message: Message, analysis: Analysis, verdict,
     исключения, а не визирует поток. Проверенный ответ уходит сам, а всё,
     к чему проверка предъявила претензии, останавливается и ждёт человека.
     """
-    reason = _human_reason(verdict, tool_name, extracted)
+    reason = _human_reason(verdict, tool_name, extracted, analysis.model)
 
     if not settings.auto_send or reason:
         analysis.auto_sent = False
@@ -497,7 +497,7 @@ def _route(db: Session, message: Message, analysis: Analysis, verdict,
     db.commit()
 
 
-def _human_reason(verdict, tool_name: str, extracted: dict) -> str:
+def _human_reason(verdict, tool_name: str, extracted: dict, model: str = "") -> str:
     """Пустая строка означает, что вмешательство человека не требуется."""
     if verdict is not None and verdict.status != "verified":
         return {
@@ -506,7 +506,15 @@ def _human_reason(verdict, tool_name: str, extracted: dict) -> str:
             "insufficient": "В базе знаний нет подходящего материала для ответа",
         }.get(verdict.status, "Проверка ответа завершилась с замечаниями")
 
-    if extracted.get("confidence", 1.0) < 0.6 and tool_name != "ask_clarification":
+    if (
+        extracted.get("confidence", 1.0) < 0.6
+        and tool_name != "ask_clarification"
+        and model != "mock"
+    ):
+        # У заглушки уверенность — константа 0.5, а не оценка: применять к ней
+        # этот порог значит останавливать вообще всё и показывать неработающий
+        # продукт тому, кто запустил проект без ключа модели.
+        #
         # Неуверенный разбор опасен, когда мы что-то утверждаем или кого-то
         # нагружаем заявкой. Задать уточняющий вопрос при этом безопасно:
         # худшее, что случится, — человек ответит на лишний вопрос.
