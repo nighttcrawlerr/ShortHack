@@ -1,36 +1,87 @@
 :root {
-  /* Палитра построена от #5A1A05 — тёмной жжёной сиены.
-     Базовый цвет слишком глух для акцента, поэтому акцент взят от него
-     же, но ярче: он должен читаться на проекторе с последнего ряда. */
-  --base: #5a1a05;
+  /* Палитра Сбера: фирменный зелёный #21A038.
+     Чистый белый во всю площадь режет глаза уже через час работы,
+     а оператор сидит в этом окне смену. Поэтому полотно — мягкий
+     зеленовато-серый, белым остаются только карточки, и то приглушённым. */
+  --base: #188730;
 
-  --bg: #140a05;
-  --surface: #1e0f08;
-  --surface-2: #2b160a;
-  --surface-3: #3b1f0e;
-  --border: #4a2712;
+  --bg: #eaf0ea;
+  --surface: #fbfdfb;
+  --surface-2: #f1f5f1;
+  --surface-3: #e5ece7;
+  --border: #d5e0d8;
 
-  --text: #f8efe8;
-  --muted: #cdae9c;
-  --faint: #9d7a66;
+  --text: #12251a;
+  --muted: #3f5249;
+  --faint: #4f6259;
 
-  --accent: #c4400d;
-  --accent-hover: #e0561a;
-  --accent-soft: #3d1505;
-  --accent-text: #ffb183;
+  --accent: #188730;
+  /* Фирменный #21A038 под белым текстом даёт контраст 3.4 — на проекторе
+     это грязь. Взят тот же зелёный на два тона темнее: 4.5 как заливка
+     и 4.6 под белым текстом. Кнопки ещё на тон темнее. */
+  --accent-strong: #157d2c;
+  --accent-hover: #116a25;
+  --accent-soft: #e3f4e7;
+  --accent-text: #116e29;
 
-  /* Приоритеты: два тёплых для срочного, дополнительный холодный
-     для обычного, чтобы они не сливались в один оранжевый градиент. */
-  --p1: #ff5a45;
-  --p2: #ff9a3c;
-  --p3: #4fb3a5;
-  --p4: #a08878;
+  /* Приоритеты: два тёплых для срочного, холодный для обычного,
+     чтобы они не сливались в один градиент. */
+  --p1: #951e15;
+  --p2: #a35a08;
+  --p3: #0f766e;
+  --p4: #6b7c72;
 
-  --ok: #4fb36a;
-  --warn: #e8a33d;
-  --bad: #ff5a45;
+  --ok: #157f38;
+  --warn: #a35a08;
+  --bad: #951e15;
 
+  /* На светлой теме границы мало: карточку поднимает тень. */
+  --shadow: 0 1px 2px rgba(18, 37, 26, .05), 0 1px 3px rgba(18, 37, 26, .04);
+
+  --on-accent: #ffffff;
+  --mark-crit: #951e15;
+  --scrim: rgba(16, 38, 25, .42);
+
+  color-scheme: light;
   --radius: 12px;
+}
+
+/* --- тёмная тема ---------------------------------------------------------
+   Сине-зелёная: подложка уходит в глубокий синий, акцент остаётся зелёным.
+   Марки на графиках приглушены намеренно — на тёмном фоне яркая заливка
+   выжигает полосу, комфортная светлота здесь ниже, чем на светлом. */
+:root[data-theme="dark"] {
+  --bg: #0a1721;
+  --surface: #0f2130;
+  --surface-2: #162c3c;
+  --surface-3: #1e3a4c;
+  --border: #27455a;
+
+  --text: #e8f2f4;
+  --muted: #a9c2cb;
+  --faint: #87a3ae;
+
+  --accent: #26a866;
+  --accent-strong: #26a866;
+  --accent-hover: #2fbd75;
+  --accent-soft: #10322a;
+  --accent-text: #4fd18f;
+  --on-accent: #06170f;
+
+  --p1: #e2705f;
+  --p2: #d99b4a;
+  --p3: #4fc3b0;
+  --p4: #8aa3ad;
+  --mark-crit: #c9403a;
+
+  --ok: #45c07a;
+  --warn: #d99b4a;
+  --bad: #e2705f;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .38), 0 2px 8px rgba(0, 0, 0, .22);
+  --scrim: rgba(2, 10, 16, .62);
+
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -77,8 +128,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--surface-2); border: 1px solid var(--border);
   font-size: 12px; color: var(--muted); white-space: nowrap;
 }
-.status-chip.warn { background: #3a2a0c; border-color: #6b4d12; color: var(--warn); }
-.status-chip.bad { background: #3a1410; border-color: #6b2218; color: var(--bad); }
+.status-chip.warn {
+  background: color-mix(in srgb, var(--warn) 13%, var(--surface));
+  border-color: color-mix(in srgb, var(--warn) 36%, var(--surface));
+  color: var(--warn);
+}
+.status-chip.bad {
+  background: color-mix(in srgb, var(--bad) 13%, var(--surface));
+  border-color: color-mix(in srgb, var(--bad) 36%, var(--surface));
+  color: var(--bad);
+}
 
 .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
 .dot.ok { background: var(--ok); }
@@ -87,14 +146,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- три колонки ------------------------------------------------------ */
 
-.inbox { display: grid; grid-template-columns: 330px minmax(0, 1fr) 440px; flex: 1; min-height: 0; }
+.inbox { display: grid; grid-template-columns: 320px minmax(0, 1fr) 440px; flex: 1; min-height: 0; }
 .column { min-height: 0; overflow-y: auto; border-right: 1px solid var(--border); }
 .column:last-child { border-right: 0; }
 
 .column-head {
   position: sticky; top: 0; z-index: 2;
-  padding: 12px; background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 9px;
 }
 
 .filters { display: flex; gap: 6px; }
@@ -110,8 +169,8 @@ textarea { resize: vertical; font-family: inherit; }
 /* --- список обращений -------------------------------------------------- */
 
 .msg {
-  padding: 11px 13px; border-bottom: 1px solid var(--border);
-  cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+  padding: 13px 14px; border-bottom: 1px solid var(--border);
+  cursor: pointer; display: flex; flex-direction: column; gap: 7px;
   border-left: 3px solid transparent;
 }
 .msg:hover { background: var(--surface); }
@@ -121,37 +180,47 @@ textarea { resize: vertical; font-family: inherit; }
 
 .msg-top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--faint); }
 .msg-subject { font-weight: 600; line-height: 1.35; }
-.msg-preview { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+/* Превью в очереди — подсказка, а не чтение: две строки и обрыв.
+   Иначе левая колонка превращается в сплошное полотно текста. */
+.msg-preview {
+  font-size: 12.5px; color: var(--muted); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.msg-subject {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .msg-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* --- метки ------------------------------------------------------------- */
 
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+  padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;
   background: var(--surface-3); color: var(--muted); white-space: nowrap;
 }
-.badge.p1 { background: rgba(255,90,69,.16); color: var(--p1); }
-.badge.p2 { background: rgba(255,154,60,.16); color: var(--p2); }
-.badge.p3 { background: rgba(79,179,165,.18); color: var(--p3); }
-.badge.p4 { background: rgba(160,136,120,.18); color: var(--p4); }
-.badge.ok { background: rgba(79,179,106,.18); color: var(--ok); }
-.badge.warn { background: rgba(232,163,61,.18); color: var(--warn); }
-.badge.bad { background: rgba(255,90,69,.18); color: var(--bad); }
+.badge.p1 { background: color-mix(in srgb, var(--p1) 13%, var(--surface)); color: var(--p1); }
+.badge.p2 { background: color-mix(in srgb, var(--p2) 13%, var(--surface)); color: var(--p2); }
+.badge.p3 { background: color-mix(in srgb, var(--p3) 13%, var(--surface)); color: var(--p3); }
+.badge.p4 { background: color-mix(in srgb, var(--p4) 13%, var(--surface)); color: var(--p4); }
+.badge.ok { background: color-mix(in srgb, var(--ok) 13%, var(--surface)); color: var(--ok); }
+.badge.warn { background: color-mix(in srgb, var(--warn) 13%, var(--surface)); color: var(--warn); }
+.badge.bad { background: color-mix(in srgb, var(--bad) 13%, var(--surface)); color: var(--bad); }
 .badge.accent { background: var(--accent-soft); color: var(--accent-text); }
 
 /* --- панели ------------------------------------------------------------ */
 
-.pane { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.pane { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 
 .card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 14px;
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
 }
 .card.tight { padding: 11px 13px; }
 
 .card-title {
-  font-size: 11px; font-weight: 700; letter-spacing: .07em;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .07em;
   text-transform: uppercase; color: var(--faint); margin-bottom: 9px;
 }
 
@@ -176,11 +245,16 @@ textarea { resize: vertical; font-family: inherit; }
 }
 .btn:hover:not(:disabled) { background: var(--surface-3); }
 .btn:disabled { opacity: .5; cursor: default; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn-ghost { background: transparent; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn-sm { padding: 5px 10px; font-size: 12.5px; }
+
+/* Главное действие на экране одно, и оно должно выигрывать у соседей
+   размером, а не только цветом. */
+.btn-lg { padding: 11px 22px; font-size: 15px; border-radius: 10px; }
+.actions { margin-top: 4px; align-items: center; }
 
 /* --- полоса уверенности ------------------------------------------------- */
 
@@ -204,9 +278,9 @@ textarea { resize: vertical; font-family: inherit; }
 .step-main { flex: 1; min-width: 0; }
 .step-name { font-size: 13px; font-weight: 600; }
 .step-out { font-size: 12px; color: var(--muted); word-break: break-word; }
-.step-ms { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.step-ms { font-size: 12px; color: var(--faint); white-space: nowrap; }
 .hint {
-  font-size: 11.5px; color: var(--faint); line-height: 1.45;
+  font-size: 12px; color: var(--faint); line-height: 1.5;
   white-space: normal; overflow-wrap: anywhere;
 }
 .step-detail {
@@ -226,7 +300,7 @@ textarea { resize: vertical; font-family: inherit; }
 .claim.not_found .claim-mark { color: var(--warn); }
 .claim.contradicted .claim-mark { color: var(--bad); }
 .claim-text { font-size: 13px; }
-.claim-note { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.claim-note { font-size: 12px; color: var(--faint); margin-top: 2px; }
 
 .issue {
   display: flex; gap: 8px; padding: 7px 9px; border-radius: 8px;
@@ -240,17 +314,30 @@ textarea { resize: vertical; font-family: inherit; }
 .passage { padding: 9px 0; border-bottom: 1px dashed var(--border); }
 .passage:last-child { border-bottom: 0; }
 .passage-head { display: flex; align-items: baseline; gap: 8px; }
-.passage-no { color: var(--accent); font-weight: 700; font-size: 12px; }
+.passage-no { color: var(--accent-text); font-weight: 700; font-size: 12px; }
 .passage-title { font-size: 13px; font-weight: 600; flex: 1; }
 .passage-text { font-size: 12.5px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
-.passage-src { font-size: 11px; color: var(--faint); margin-top: 4px; }
+.passage-src { font-size: 11.5px; color: var(--faint); margin-top: 4px; }
 
 /* --- плашки -------------------------------------------------------------- */
 
 .notice { padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; }
-.notice.warn { background: #33240a; border: 1px solid #6b4d12; color: #f5cf8e; }
-.notice.bad { background: #331210; border: 1px solid #6b2218; color: #ffb9ad; }
-.notice.ok { background: #102a19; border: 1px solid #23603a; color: #96dfa8; }
+.notice.warn, .notice.bad, .notice.ok { border: 1px solid; }
+.notice.warn {
+  background: color-mix(in srgb, var(--warn) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--warn) 32%, var(--surface));
+  color: color-mix(in srgb, var(--warn) 72%, var(--text));
+}
+.notice.bad {
+  background: color-mix(in srgb, var(--bad) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--bad) 32%, var(--surface));
+  color: color-mix(in srgb, var(--bad) 72%, var(--text));
+}
+.notice.ok {
+  background: color-mix(in srgb, var(--ok) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--ok) 32%, var(--surface));
+  color: color-mix(in srgb, var(--ok) 72%, var(--text));
+}
 .notice.info { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
 
 .empty {
@@ -269,43 +356,194 @@ textarea { resize: vertical; font-family: inherit; }
 .table th {
   text-align: left; padding: 9px 10px; color: var(--faint);
   font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
-  border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg);
+  border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface-2);
 }
 .table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .table tr.proposed td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 
 /* --- статистика ------------------------------------------------------------ */
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-.tile-value { font-size: 30px; font-weight: 700; letter-spacing: -1px; }
-.tile-label { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+}
+.tile-value { font-size: 32px; font-weight: 700; letter-spacing: -1.2px; line-height: 1.1; }
+.tile-label { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
 
-.chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; font-size: 13px; }
-.chart-label { flex: 0 0 190px; color: var(--muted); }
-.chart-track { flex: 1; height: 20px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
-.chart-fill { height: 100%; background: var(--accent); border-radius: 5px; }
-.chart-count { flex: 0 0 34px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Полосы были толстыми блоками во всю ширину дорожки: заливка кричит,
+   а данных в ней столько же. Тонкая марка от общей нулевой линии
+   сравнивается глазом лучше и не забивает карточку. */
+.chart { display: flex; flex-direction: column; }
 
-.page { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.crow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 8px; margin: 0 -8px; border-radius: 6px;
+}
+.crow:hover { background: var(--surface-2); }
+
+/* Подпись прижата к левому краю карточки: при выравнивании вправо
+   у кромки оставался пустой ров, и весь график уезжал правее. */
+.clabel {
+  flex: 0 0 clamp(92px, 19%, 164px);
+  font-size: 12.5px; color: var(--muted); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Дорожка отдана одной марке. Раньше значение стояло внутри неё следом
+   за заливкой, и на самой длинной полосе его выдавливало за карточку. */
+.ctrack {
+  flex: 1; min-width: 0;
+  border-left: 1px solid var(--border); padding-left: 1px;
+}
+
+.cfill {
+  height: 10px; min-width: 2px; max-width: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+/* Критический приоритет выделен цветом, но различает его не оттенок,
+   а светлота: под дейтеранопией красный и зелёный сводятся к жёлтому,
+   и только тёмная марка отделяется от обычной. */
+.cfill.crit { background: var(--mark-crit); }
+
+/* Значения — своей колонкой справа, в столбик и моноширинными цифрами. */
+.cval {
+  flex: 0 0 66px; text-align: right;
+  font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+.cshare { color: var(--faint); margin-left: 7px; }
+
+.page { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 
 /* --- модальное окно --------------------------------------------------------- */
 
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  position: fixed; inset: 0; background: var(--scrim);
   display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
 }
 .modal {
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
   padding: 20px; width: min(640px, 100%); max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 12px 32px var(--scrim);
   display: flex; flex-direction: column; gap: 12px;
 }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
-.field label { font-size: 12px; color: var(--faint); }
+.field label { font-size: 12.5px; color: var(--faint); }
 .field-row { display: flex; gap: 10px; }
 .field-row > * { flex: 1; }
 
 @media (max-width: 1240px) {
   .inbox { grid-template-columns: 280px minmax(0, 1fr) 400px; }
+}
+
+
+/* --- сворачиваемые блоки ---------------------------------------------- */
+
+.sec {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.sec > summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; cursor: pointer; list-style: none;
+  font-size: 13px; font-weight: 600; user-select: none;
+}
+.sec > summary::-webkit-details-marker { display: none; }
+.sec > summary::after {
+  content: ''; margin-left: auto; flex: 0 0 auto;
+  width: 7px; height: 7px; border-right: 1.6px solid var(--faint);
+  border-bottom: 1.6px solid var(--faint); transform: translateY(-2px) rotate(45deg);
+  transition: transform .15s;
+}
+.sec[open] > summary::after { transform: translateY(1px) rotate(225deg); }
+.sec > summary:hover { color: var(--accent-text); }
+.sec-meta { font-size: 12.5px; font-weight: 400; color: var(--faint); }
+.sec-body { padding: 0 16px 15px; }
+
+/* Вложенный блок внутри карточки: без своей рамки и фона. */
+.sec-plain { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.sec-plain > summary { padding: 9px 0; border-top: 1px solid var(--border); }
+.sec-plain > .sec-body { padding: 0 0 6px; }
+
+/* --- заголовок и факты одной строкой ----------------------------------- */
+
+.headline { font-size: 16px; font-weight: 700; line-height: 1.35; letter-spacing: -0.2px; }
+
+/* Извлечённые данные раньше занимали отдельную карточку со списком.
+   В строку они читаются одним взглядом и не спорят с заголовком. */
+.facts {
+  display: flex; flex-wrap: wrap; gap: 3px 16px;
+  margin-top: 10px; font-size: 12.5px; line-height: 1.5;
+}
+.facts b { color: var(--faint); font-weight: 500; margin-right: 5px; }
+.facts.warn-facts b { color: var(--warn); }
+
+/* --- вердикт ------------------------------------------------------------ */
+
+.verdict { display: flex; align-items: center; gap: 9px; font-size: 14px; }
+.verdict-score { margin-left: auto; color: var(--faint); font-variant-numeric: tabular-nums; }
+.verdict .dot { width: 9px; height: 9px; flex: 0 0 9px; }
+
+.tight-list { margin: 0; padding-left: 18px; font-size: 13px; }
+.tight-list li { margin-bottom: 3px; }
+
+/* --- призыв к разбору ---------------------------------------------------- */
+
+/* Кнопка стоит там, где появится её результат: в пустой колонке разбора,
+   а не под письмом в соседней. Так видно, что она делает. */
+.cta { gap: 14px; }
+.cta-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.cta .hint { max-width: 260px; }
+
+.pane-head { display: flex; align-items: center; gap: 10px; }
+.pane-head .section-title { margin: 0; }
+.pane-head .btn { margin-left: auto; }
+
+
+/* --- переключатель темы --------------------------------------------------- */
+
+.theme-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
+}
+.theme-toggle:hover { color: var(--accent-text); border-color: var(--accent); }
+
+/* --- письмо под катом ------------------------------------------------------ */
+
+/* Текст обращения — самый объёмный кусок на экране. Свёрнут до шести строк
+   с растворением края: видно, о чём письмо, но полотно не давит. */
+.clamped { position: relative; max-height: 8.6em; overflow: hidden; }
+.clamped::after {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 2.4em;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+}
+.more {
+  margin-top: 8px; padding: 0; border: 0; background: none;
+  color: var(--accent-text); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.more:hover { text-decoration: underline; }
+
+
+/* --- уход заявки в архив ---------------------------------------------------- */
+
+/* Строка проваливается вниз и гаснет, и только после этого список
+   перечитывается: иначе заявка просто пропадает и кажется, что её удалили. */
+.row-leaving { animation: drop .28s ease-in forwards; }
+@keyframes drop {
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+.undo-bar { display: flex; align-items: center; gap: 12px; }
+.undo-bar .btn { margin-left: auto; }
+
+/* Архивная таблица уже внутри свёрнутого блока, своя рамка ей не нужна. */
+.sec .table { margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .row-leaving { animation: none; opacity: 0; }
 }

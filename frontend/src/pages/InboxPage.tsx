@@ -42,6 +42,7 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
+  const [fullBody, setFullBody] = useState(false)
 
   const loadList = useCallback(async () => {
     try {
@@ -54,6 +55,7 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
   useEffect(() => { void loadList() }, [loadList])
 
   useEffect(() => {
+    setFullBody(false)
     if (selected === null) { setDetail(null); setSimilar([]); return }
     let alive = true
     setError(null)
@@ -202,7 +204,6 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
       <div className="column">
         {!detail && (
           <div className="empty">
-            <div style={{ fontSize: 32 }}>✉</div>
             <div>Выберите обращение слева</div>
           </div>
         )}
@@ -211,7 +212,7 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
             <div className="card">
               <div className="meta" style={{ marginBottom: 8 }}>
                 <ChannelBadge code={detail.message.channel} />
-                <span>{detail.message.author_name} &lt;{detail.message.author_email}&gt;</span>
+                <span>{detail.message.author_name}</span>
                 <span style={{ marginLeft: 'auto' }}>
                   {detail.message.received_at.replace('T', ' ').slice(0, 16)}
                 </span>
@@ -219,28 +220,15 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
               <div className="section-title" style={{ marginBottom: 10 }}>
                 {detail.message.subject ?? `Расшифровка звонка от ${detail.message.author_name}`}
               </div>
-              <div className="msg-body">{detail.message.body}</div>
-            </div>
-
-            <div className="btn-row">
-              <button className="btn btn-primary" disabled={analyzing} onClick={() => analyze(false)}>
-                {analyzing ? 'Разбираю…' : analysis ? 'Показать разбор' : 'Разобрать'}
-              </button>
-              {analysis && (
-                <button className="btn btn-ghost" disabled={analyzing} onClick={() => analyze(true)}>
-                  Разобрать заново
+              <div className={fullBody ? 'msg-body' : 'msg-body clamped'}>
+                {detail.message.body}
+              </div>
+              {!fullBody && detail.message.body.length > 320 && (
+                <button className="more" onClick={() => setFullBody(true)}>
+                  Показать целиком
                 </button>
               )}
             </div>
-
-            {error && (
-              <div className="notice bad">
-                {error}
-                <div className="btn-row" style={{ marginTop: 8 }}>
-                  <button className="btn btn-sm" onClick={() => analyze(true)}>Повторить</button>
-                </div>
-              </div>
-            )}
 
             <SimilarList tickets={similar} statuses={dicts?.ticket_statuses} />
 
@@ -253,15 +241,29 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
 
       <div className="column">
         {analyzing && <Skeleton />}
-        {!analyzing && !analysis && (
+        {!analyzing && !analysis && !detail && (
           <div className="empty">
-            <div style={{ fontSize: 32 }}>◆</div>
-            <div>Нажмите «Разобрать», и здесь появится разбор</div>
+            <div>Разбор появится здесь</div>
+          </div>
+        )}
+        {!analyzing && !analysis && detail && (
+          <div className="empty cta">
+            <div className="cta-title">Не разобрано</div>
+            <button className="btn btn-primary btn-lg" onClick={() => analyze(false)}>
+              Разобрать
+            </button>
+            {error && <div className="notice bad">{error}</div>}
           </div>
         )}
         {!analyzing && analysis && detail && (
           <div className="pane">
+            <div className="pane-head">
+              <button className="btn btn-ghost btn-sm" disabled={analyzing} onClick={() => analyze(true)}>
+                Заново
+              </button>
+            </div>
             {flash && <div className="notice ok">{flash}</div>}
+            {error && <div className="notice bad">{error}</div>}
             <AnalysisCard analysis={analysis} dicts={dicts} />
             {verification && <VerificationPanel verification={verification} />}
             {analysis.auto_sent ? (
@@ -275,7 +277,7 @@ export function InboxPage({ dicts, selected, onSelect, onChanged }: {
               <>
                 {analysis.human_reason && (
                   <div className="notice warn">
-                    <b>Нужен человек.</b> {analysis.human_reason}. Отправка остановлена.
+                    <b>Нужен человек.</b> {analysis.human_reason}
                   </div>
                 )}
                 <ActionPanel

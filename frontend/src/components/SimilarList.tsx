@@ -1,13 +1,13 @@
 import type { DictItem, SimilarTicket } from '../types'
 import { StatusBadge } from './Badge'
+import { Section } from './Section'
 
 export function SimilarList({ tickets, statuses }: {
   tickets: SimilarTicket[]; statuses?: DictItem[]
 }) {
   if (!tickets.length) return null
   return (
-    <div className="card">
-      <div className="card-title">Похожие заявки и чем они закончились</div>
+    <Section title="Похожие заявки" meta={String(tickets.length)}>
       {tickets.map((ticket) => (
         <div className="passage" key={ticket.id}>
           <div className="passage-head">
@@ -19,6 +19,6 @@ export function SimilarList({ tickets, statuses }: {
           {ticket.resolution && <div className="passage-text">{ticket.resolution}</div>}
         </div>
       ))}
-    </div>
+    </Section>
   )
 }

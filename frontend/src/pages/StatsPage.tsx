@@ -1,30 +1,53 @@
 import { useEffect, useState } from 'react'
 import * as api from '../api/client'
 import type { CountItem, Stats } from '../types'
+import { Section } from '../components/Section'
 
-function Chart({ title, items, colors }: {
-  title: string; items: CountItem[]; colors?: Record<string, string>
+/**
+ * Горизонтальные полосы от общей нулевой линии.
+ *
+ * Приоритеты — упорядоченная шкала, а не четыре независимых сущности,
+ * поэтому четырьмя цветами их красить нечестно и вдобавок не проходит
+ * проверку на дальтонизм: красный и янтарный сливаются. Вместо этого
+ * выделен только критический приоритет, остальное — обычный акцент.
+ */
+function Chart({ title, items, order, critical }: {
+  title: string
+  items: CountItem[]
+  /** Порядковую шкалу нельзя сортировать по величине: P1 обязан быть первым. */
+  order?: string[]
+  critical?: string
 }) {
   if (!items.length) return null
-  const max = Math.max(...items.map((i) => i.count))
+  const rows = order
+    ? [...items].sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code))
+    : [...items].sort((a, b) => b.count - a.count)
+  const max = Math.max(...rows.map((i) => i.count))
+  const total = rows.reduce((sum, i) => sum + i.count, 0)
+
   return (
     <div className="card">
       <div className="card-title">{title}</div>
-      {items.map((item) => (
-        <div className="chart-row" key={item.code}>
-          <div className="chart-label">{item.label}</div>
-          <div className="chart-track">
-            <div
-              className="chart-fill"
-              style={{
-                width: `${Math.round((item.count / max) * 100)}%`,
-                background: colors?.[item.code] ?? 'var(--accent)',
-              }}
-            />
-          </div>
-          <div className="chart-count">{item.count}</div>
-        </div>
-      ))}
+      <div className="chart">
+        {rows.map((item) => {
+          const share = total ? Math.round((item.count / total) * 100) : 0
+          return (
+            <div className="crow" key={item.code} title={`${item.label}: ${item.count} из ${total} (${share}%)`}>
+              <div className="clabel">{item.label}</div>
+              <div className="ctrack">
+                <div
+                  className={`cfill ${critical && item.code === critical ? 'crit' : ''}`}
+                  style={{ width: `${max ? (item.count / max) * 100 : 0}%` }}
+                />
+              </div>
+              <div className="cval">
+                {item.count}
+                <span className="cshare">{share}%</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -38,16 +61,14 @@ export function StatsPage({ onOpenMessage }: { onOpenMessage: (id: number) => vo
 
   return (
     <div className="page">
-      <div className="section-title">Аналитика потока обращений</div>
-
       <div className="tiles">
         <div className="tile">
-          <div className="tile-value">{stats.messages_total}</div>
-          <div className="tile-label">обращений в очереди</div>
+          <div className="tile-value">{stats.messages_analyzed}</div>
+          <div className="tile-label">обращений разобрано из {stats.messages_total}</div>
         </div>
         <div className="tile">
-          <div className="tile-value">{stats.messages_analyzed}</div>
-          <div className="tile-label">разобрано помощником</div>
+          <div className="tile-value">{Math.round(stats.auto_actionable_share * 100)}%</div>
+          <div className="tile-label">разобрано уверенно</div>
         </div>
         <div className="tile">
           <div className="tile-value">{stats.tickets_total}</div>
@@ -59,31 +80,43 @@ export function StatsPage({ onOpenMessage }: { onOpenMessage: (id: number) => vo
         </div>
       </div>
 
-      {stats.mass_incidents.length > 0 && (
-        <div className="card">
-          <div className="card-title">Повторяющиеся проблемы</div>
-          {stats.mass_incidents.map((incident, index) => (
-            <div key={index} className="notice warn" style={{ marginBottom: 8 }}>
-              <div>{incident.hint}</div>
-              <div className="btn-row" style={{ marginTop: 8 }}>
-                {incident.message_ids.map((id) => (
-                  <button key={id} className="btn btn-sm" onClick={() => onOpenMessage(id)}>
-                    обращение №{id}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+      {stats.mass_incidents.map((incident, index) => (
+        <div key={index} className="notice warn">
+          <b>Возможен массовый сбой.</b> {incident.hint}
+          <div className="btn-row" style={{ marginTop: 10 }}>
+            {incident.message_ids.map((id) => (
+              <button key={id} className="btn btn-sm" onClick={() => onOpenMessage(id)}>
+                обращение №{id}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
 
-      <Chart title="По категориям" items={stats.by_category} />
       <Chart
         title="По приоритетам"
         items={stats.by_priority}
-        colors={{ P1: 'var(--p1)', P2: 'var(--p2)', P3: 'var(--p3)', P4: 'var(--p4)' }}
+        order={['P1', 'P2', 'P3', 'P4']}
+        critical="P1"
       />
-      <Chart title="По выбранным действиям" items={stats.by_action} />
+      <Chart title="По категориям" items={stats.by_category} />
+
+      <Section title="По выбранным действиям" meta={String(stats.by_action.length)}>
+        <div className="chart">
+          {[...stats.by_action].sort((a, b) => b.count - a.count).map((item) => {
+            const max = Math.max(...stats.by_action.map((i) => i.count))
+            return (
+              <div className="crow" key={item.code}>
+                <div className="clabel">{item.label}</div>
+                <div className="ctrack">
+                  <div className="cfill" style={{ width: `${max ? (item.count / max) * 100 : 0}%` }} />
+                </div>
+                <div className="cval">{item.count}</div>
+              </div>
+            )
+          })}
+        </div>
+      </Section>
     </div>
   )
 }

@@ -1,12 +1,13 @@
 import type { Passage } from '../types'
+import { Section } from './Section'
 
 export function Passages({ passages, mode }: { passages: Passage[]; mode?: string }) {
   if (!passages.length) return null
   return (
-    <div className="card">
-      <div className="card-title">
-        Источники ответа{mode ? ` · ${mode} поиск` : ''}
-      </div>
+    <Section
+      title="Источники ответа"
+      meta={`${passages.length} фрагмента${mode ? ` · ${mode} поиск` : ''}`}
+    >
       {passages.map((passage, index) => (
         <div className="passage" key={passage.chunk_id}>
           <div className="passage-head">
@@ -22,6 +23,6 @@ export function Passages({ passages, mode }: { passages: Passage[]; mode?: strin
           </div>
         </div>
       ))}
-    </div>
+    </Section>
   )
 }

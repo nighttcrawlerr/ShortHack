@@ -4,6 +4,7 @@ import type { Dictionaries, Health } from './types'
 import { InboxPage } from './pages/InboxPage'
 import { StatsPage } from './pages/StatsPage'
 import { TicketsPage } from './pages/TicketsPage'
+import { ThemeToggle } from './components/ThemeToggle'
 
 type Tab = 'inbox' | 'tickets' | 'stats'
 
@@ -77,6 +78,7 @@ export default function App() {
             </span>
           )}
           <LlmChip health={health} />
+          <ThemeToggle />
         </div>
       </header>
 

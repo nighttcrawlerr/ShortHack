@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { AgentStep } from '../types'
+import { Section } from './Section'
 
 const FALLBACK: Record<string, string> = {
   extract_structure: 'Разбор обращения моделью',
@@ -25,8 +26,10 @@ export function AgentTrace({ steps, names }: {
   const total = steps.reduce((sum, s) => sum + s.latency_ms, 0)
 
   return (
-    <div className="card">
-      <div className="card-title">Как агент пришёл к решению</div>
+    <Section
+      title="Как агент пришёл к решению"
+      meta={`${steps.length} шагов · модель ${llmCount} · ${(total / 1000).toFixed(1)} с`}
+    >
       <div className="trace">
         {steps.map((step) => (
           <div
@@ -53,10 +56,6 @@ export function AgentTrace({ steps, names }: {
           </div>
         ))}
       </div>
-      <div className="hint" style={{ marginTop: 10 }}>
-        Всего {steps.length} шагов, обращений к модели {llmCount}, суммарно {total} мс.
-        Остальное сделал обычный код.
-      </div>
-    </div>
+    </Section>
   )
 }

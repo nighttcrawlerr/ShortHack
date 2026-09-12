@@ -1,26 +1,11 @@
 import type { Verification } from '../types'
+import { Section } from './Section'
 
-const STATUS: Record<string, { label: string; tone: string; note: string }> = {
-  verified: {
-    label: 'Проверено',
-    tone: 'ok',
-    note: 'Каждое утверждение опирается на источник. Ответ можно отправлять.',
-  },
-  needs_review: {
-    label: 'Нужен взгляд человека',
-    tone: 'warn',
-    note: 'Часть утверждений подтверждена не полностью. Прочитайте перед отправкой.',
-  },
-  rejected: {
-    label: 'Отклонено проверкой',
-    tone: 'bad',
-    note: 'В ответе нашлись утверждения без опоры на источники. Ответ не отправляется.',
-  },
-  insufficient: {
-    label: 'Отвечать нечем',
-    tone: 'warn',
-    note: 'В базе знаний нет подходящего материала. Помощник не стал сочинять ответ.',
-  },
+const STATUS: Record<string, { label: string; tone: string }> = {
+  verified: { label: 'Проверено', tone: 'ok' },
+  needs_review: { label: 'Нужен взгляд человека', tone: 'warn' },
+  rejected: { label: 'Отклонено проверкой', tone: 'bad' },
+  insufficient: { label: 'Отвечать нечем', tone: 'warn' },
 }
 
 const CHECK_LABELS: Record<string, string> = {
@@ -64,14 +49,13 @@ export function VerificationPanel({ verification }: { verification: Verification
 
   return (
     <div className="card">
-      <div className="card-title">Проверка на искажения</div>
-
-      <div className={`notice ${meta.tone}`} style={{ marginBottom: 12 }}>
-        <b>{meta.label} · {percent}%</b>
-        <div style={{ marginTop: 3 }}>{meta.note}</div>
+      <div className="verdict">
+        <span className={`dot ${meta.tone}`} />
+        <b>{meta.label}</b>
+        <span className="verdict-score">{percent}%</span>
       </div>
 
-      <div className="bar" style={{ marginBottom: 12 }}>
+      <div className="bar" style={{ marginTop: 9 }}>
         <span
           style={{
             width: `${percent}%`,
@@ -80,58 +64,52 @@ export function VerificationPanel({ verification }: { verification: Verification
         />
       </div>
 
-      <dl className="kv" style={{ marginBottom: verification.issues.length ? 12 : 0 }}>
-        {Object.entries(verification.checks).map(([key, value]) => (
-          <div key={key} style={{ display: 'contents' }}>
-            <dt>{CHECK_LABELS[key] ?? key}</dt>
-            <dd>{formatCheck(key, value)}</dd>
-          </div>
-        ))}
-      </dl>
 
-      {verification.issues.length > 0 && (
-        <>
-          <div className="card-title">Что не сошлось</div>
-          {verification.issues.map((issue, index) => (
-            <div key={index} className={`issue ${issue.severity}`}>
-              <div>
-                <div>{issue.explanation}</div>
-                {issue.fragment && (
-                  <div className="claim-note">фрагмент: «{issue.fragment}»</div>
-                )}
-              </div>
+      <Section
+        plain
+        title={verification.issues.length
+          ? `Замечаний: ${verification.issues.length}`
+          : 'Проверка по пунктам'}
+        meta={`${verification.latency_ms} мс · ${verification.model_used ? 'с моделью' : 'только код'}`}
+      >
+        <dl className="kv">
+          {Object.entries(verification.checks).map(([key, value]) => (
+            <div key={key} style={{ display: 'contents' }}>
+              <dt>{CHECK_LABELS[key] ?? key}</dt>
+              <dd>{formatCheck(key, value)}</dd>
             </div>
           ))}
-        </>
-      )}
+        </dl>
 
-      {verification.claims.length > 0 && (
-        <>
-          <div className="card-title" style={{ marginTop: 12 }}>
-            Разбор по утверждениям
-          </div>
-          {verification.claims.map((claim, index) => (
-            <div key={index} className={`claim ${claim.verdict}`}>
-              <div className="claim-mark">{VERDICT_MARK[claim.verdict]}</div>
-              <div>
-                <div className="claim-text">{claim.text}</div>
-                <div className="claim-note">
-                  {VERDICT_TEXT[claim.verdict]}
-                  {claim.source ? ` · источник [${claim.source}]` : ''}
-                  {claim.comment ? ` · ${claim.comment}` : ''}
+        {verification.issues.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            {verification.issues.map((issue, index) => (
+              <div key={index} className={`issue ${issue.severity}`}>
+                <div>
+                  <div>{issue.explanation}</div>
+                  {issue.fragment && (
+                    <div className="claim-note">фрагмент: «{issue.fragment}»</div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
-        </>
-      )}
+            ))}
+          </div>
+        )}
 
-      <div className="hint" style={{ marginTop: 10 }}>
-        Проверка заняла {verification.latency_ms} мс
-        {verification.model_used
-          ? ', включая отдельный вызов проверяющей модели'
-          : ', только программные правила без обращения к модели'}
-      </div>
+        {verification.claims.map((claim, index) => (
+          <div key={index} className={`claim ${claim.verdict}`}>
+            <div className="claim-mark">{VERDICT_MARK[claim.verdict]}</div>
+            <div>
+              <div className="claim-text">{claim.text}</div>
+              <div className="claim-note">
+                {VERDICT_TEXT[claim.verdict]}
+                {claim.source ? ` · источник [${claim.source}]` : ''}
+                {claim.comment ? ` · ${claim.comment}` : ''}
+              </div>
+            </div>
+          </div>
+        ))}
+      </Section>
     </div>
   )
 }
