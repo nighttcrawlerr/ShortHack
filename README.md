@@ -246,3 +246,4 @@ YandexGPT, Qwen3, GigaChat и локальной моделью через Ollam
 | [docs/02_DEV_A_BACKEND.md](docs/02_DEV_A_BACKEND.md) | План работ по бэкенду |
 | [docs/03_DEV_B_FRONTEND.md](docs/03_DEV_B_FRONTEND.md) | План работ по фронтенду |
 | [docs/04_PRESENTER.md](docs/04_PRESENTER.md) | Слайды, скрипт защиты, вопросы жюри |
+| [docs/05_СОСТОЯНИЕ.md](docs/05_СОСТОЯНИЕ.md) | Снимок проекта: что где развёрнуто, карта файлов, грабли, что не сделано |
