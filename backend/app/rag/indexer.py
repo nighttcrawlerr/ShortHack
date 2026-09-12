@@ -17,6 +17,12 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
 
     created: list[KBChunk] = []
     for article in db.query(KBArticle).order_by(KBArticle.id).all():
+        # Заголовок и ключевые слова статьи попадают в индекс дополнительно:
+        # совпадение по теме статьи должно весить больше, чем случайное
+        # совпадение по слову из середины текста.
+        # Ключевые слова — прямое указание автора статьи, о чём она.
+        # Даём им двойной вес, заголовку одинарный.
+        boost = tokenize(article.title) + 2 * tokenize(" ".join(article.keywords or []))
         for ordinal, text in enumerate(split_article(article.title, article.body)):
             chunk = KBChunk(
                 article_id=article.id,
@@ -26,7 +32,7 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
                 category=article.category,
                 service=article.service,
                 source=article.source or "",
-                tokens=tokenize(text),
+                tokens=tokenize(text) + boost,
             )
             db.add(chunk)
             created.append(chunk)

@@ -48,6 +48,36 @@ def list_messages(
     return [list_item(m) for m in rows]
 
 
+@router.post("/analyze-all", response_model=dict)
+def analyze_all(
+    limit: int = Query(default=30, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Разобрать всю неразобранную очередь.
+
+    Нужно, чтобы жюри и менторы открывали приложение на заполненных данных,
+    а не на пустом дашборде.
+    """
+    from app.agent.runner import run_analysis
+
+    pending = (
+        db.query(Message)
+        .filter(Message.status == "new")
+        .order_by(Message.received_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+    done, failed = 0, 0
+    for message in pending:
+        try:
+            run_analysis(db, message)
+            done += 1
+        except Exception:  # noqa: BLE001  одно плохое обращение не должно ломать пакет
+            failed += 1
+    return {"analyzed": done, "failed": failed, "pending_before": len(pending)}
+
+
 @router.get("/{message_id}", response_model=MessageDetailOut)
 def get_message(message_id: int, db: Session = Depends(get_db)) -> MessageDetailOut:
     return build_detail(db, _get_or_404(db, message_id))
