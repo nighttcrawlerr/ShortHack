@@ -1,4 +1,4 @@
-# SupportPilot — интерфейс
+# SaluteAgent — интерфейс
 
 React, TypeScript, Vite. Рабочее место оператора первой линии поддержки.
 

@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # если важнее скорость, чем полнота проверки.
     verify_with_model: bool = True
 
-    database_url: str = f"sqlite:///{BACKEND_DIR / 'supportpilot.db'}"
+    database_url: str = f"sqlite:///{BACKEND_DIR / 'saluteagent.db'}"
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

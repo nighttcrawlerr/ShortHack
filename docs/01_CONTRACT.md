@@ -53,7 +53,7 @@
 
 ## 2. Схема базы данных
 
-SQLite, файл `backend/supportpilot.db`. Поля с пометкой JSON хранятся как текст и сериализуются в Python.
+SQLite, файл `backend/saluteagent.db`. Поля с пометкой JSON хранятся как текст и сериализуются в Python.
 
 ### `messages` — входящее обращение
 

@@ -59,7 +59,7 @@ backend/
 
 1. requirements.txt: fastapi, uvicorn[standard], sqlalchemy, pydantic, pydantic-settings,
    python-dotenv, httpx. Версии не пинуй.
-2. app/db.py: движок SQLAlchemy 2.0 на SQLite по пути backend/supportpilot.db,
+2. app/db.py: движок SQLAlchemy 2.0 на SQLite по пути backend/saluteagent.db,
    SessionLocal, Base, зависимость get_db для FastAPI.
 3. app/models.py: модели messages, analyses, tickets, kb_articles, agent_steps, outbox
    строго по разделу 2 контракта. Поля, помеченные JSON, храни как Text
@@ -298,7 +298,7 @@ mass_incidents: сгруппируй обращения за последние 
    live, mock или error, плюс имя модели и число обращений в базе.
 3. Напиши backend/README.md: требования, установка, .env, запуск, список эндпоинтов
    с примерами curl. Коротко, на русском.
-4. Проверь сценарий с нуля: удалить supportpilot.db, запустить сервер,
+4. Проверь сценарий с нуля: удалить saluteagent.db, запустить сервер,
    разобрать три разных обращения, подтвердить одно, отклонить одно.
    Покажи мне вывод.
 ```

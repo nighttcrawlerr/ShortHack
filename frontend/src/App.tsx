@@ -58,7 +58,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">Support<span>Pilot</span></div>
+        <div className="brand">Salute<span>Agent</span></div>
         <nav className="tabs">
           <button className={`tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
             Инбокс

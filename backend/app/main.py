@@ -1,4 +1,4 @@
-"""Точка входа приложения SupportPilot."""
+"""Точка входа приложения SaluteAgent."""
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SupportPilot API",
+    title="SaluteAgent API",
     version="0.1.0",
     description="ИИ-помощник первой линии технической поддержки",
     default_response_class=UTF8JSONResponse,
@@ -94,7 +94,7 @@ else:
     @app.get("/")
     def root() -> dict:
         return {
-            "service": "SupportPilot",
+            "service": "SaluteAgent",
             "docs": "/docs",
             "health": "/api/health",
             "note": "Интерфейс не собран. Запустите npm run build в папке frontend",

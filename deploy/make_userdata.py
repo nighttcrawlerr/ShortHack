@@ -58,12 +58,12 @@ def build(env: dict, ssh_key: str) -> str:
     env_sh = "\n".join(f"{key}={env[key]}" for key in ENV_KEYS) + "\n"
 
     files = [
-        ("/opt/supportpilot/env.sh", "0600", env_sh),
-        ("/etc/systemd/system/supportpilot.service", "0644",
-         (HERE / "files" / "supportpilot.service").read_text(encoding="utf-8")),
-        ("/etc/nginx/sites-available/supportpilot", "0644",
+        ("/opt/saluteagent/env.sh", "0600", env_sh),
+        ("/etc/systemd/system/saluteagent.service", "0644",
+         (HERE / "files" / "saluteagent.service").read_text(encoding="utf-8")),
+        ("/etc/nginx/sites-available/saluteagent", "0644",
          (HERE / "files" / "nginx.conf").read_text(encoding="utf-8")),
-        ("/opt/supportpilot/install.sh", "0755",
+        ("/opt/saluteagent/install.sh", "0755",
          (HERE / "files" / "install.sh").read_text(encoding="utf-8")),
     ]
 
@@ -97,7 +97,7 @@ def build(env: dict, ssh_key: str) -> str:
     lines += [
         "",
         "runcmd:",
-        "  - bash /opt/supportpilot/install.sh 2>&1 | tee /var/log/supportpilot-install.log",
+        "  - bash /opt/saluteagent/install.sh 2>&1 | tee /var/log/saluteagent-install.log",
         "",
     ]
     return "\n".join(lines)

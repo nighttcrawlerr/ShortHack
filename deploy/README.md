@@ -41,7 +41,7 @@
 Переменные, которые можно переопределить:
 
 ```bash
-NAME=supportpilot ZONE=ru-central1-a ./deploy/deploy.sh
+NAME=saluteagent ZONE=ru-central1-a ./deploy/deploy.sh
 ```
 
 ## Шаг 3. Дождаться
@@ -68,17 +68,17 @@ open http://$IP
 
 ```bash
 ssh pilot@$IP
-sudo tail -100 /var/log/supportpilot-install.log   # лог установки
-sudo systemctl status supportpilot                 # состояние службы
-sudo journalctl -u supportpilot -n 100 --no-pager   # лог приложения
+sudo tail -100 /var/log/saluteagent-install.log   # лог установки
+sudo systemctl status saluteagent                 # состояние службы
+sudo journalctl -u saluteagent -n 100 --no-pager   # лог приложения
 ```
 
 ## Подключить ключ модели после развёртывания
 
 ```bash
 ssh pilot@$IP
-sudo nano /opt/supportpilot/app/backend/.env       # вписать LLM_PROVIDER, LLM_API_KEY, LLM_BASE_URL
-sudo systemctl restart supportpilot
+sudo nano /opt/saluteagent/app/backend/.env       # вписать LLM_PROVIDER, LLM_API_KEY, LLM_BASE_URL
+sudo systemctl restart saluteagent
 curl -X POST http://127.0.0.1:8000/api/reindex     # пересобрать индекс с векторами
 ```
 
@@ -86,9 +86,9 @@ curl -X POST http://127.0.0.1:8000/api/reindex     # пересобрать ин
 
 ```bash
 ssh pilot@$IP
-cd /opt/supportpilot/app && sudo -u pilot git pull
+cd /opt/saluteagent/app && sudo -u pilot git pull
 cd frontend && sudo -u pilot npm ci && sudo -u pilot npm run build
-sudo systemctl restart supportpilot
+sudo systemctl restart saluteagent
 ```
 
 ## Сколько это стоит
@@ -97,7 +97,7 @@ sudo systemctl restart supportpilot
 примерно в сто рублей в сутки. После защиты машину лучше удалить:
 
 ```bash
-yc compute instance delete supportpilot
+yc compute instance delete saluteagent
 ```
 
 ## Если нужен домен и HTTPS

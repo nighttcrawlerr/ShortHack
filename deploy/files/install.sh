@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Разворачивает приложение на чистой машине. Запускается один раз при первой
-# загрузке. Значения берутся из /opt/supportpilot/env.sh.
+# загрузке. Значения берутся из /opt/saluteagent/env.sh.
 set -euo pipefail
 
-source /opt/supportpilot/env.sh
+source /opt/saluteagent/env.sh
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -11,14 +11,14 @@ export DEBIAN_FRONTEND=noninteractive
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs
 
-rm -rf /opt/supportpilot/app
-git clone --depth 1 "$GIT_REPO" /opt/supportpilot/app
+rm -rf /opt/saluteagent/app
+git clone --depth 1 "$GIT_REPO" /opt/saluteagent/app
 
-cd /opt/supportpilot/app/frontend
+cd /opt/saluteagent/app/frontend
 npm ci --no-audit --no-fund
 npm run build
 
-cd /opt/supportpilot/app/backend
+cd /opt/saluteagent/app/backend
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r requirements.txt
@@ -36,17 +36,17 @@ python3 -m venv .venv
   echo "EMBEDDINGS_PROVIDER=$EMBEDDINGS_PROVIDER"
   echo "VERIFY_WITH_MODEL=$VERIFY_WITH_MODEL"
   echo "AUTO_SEND=$AUTO_SEND"
-} > /opt/supportpilot/app/backend/.env
-chmod 600 /opt/supportpilot/app/backend/.env
+} > /opt/saluteagent/app/backend/.env
+chmod 600 /opt/saluteagent/app/backend/.env
 
-chown -R pilot:pilot /opt/supportpilot
+chown -R pilot:pilot /opt/saluteagent
 
-ln -sf /etc/nginx/sites-available/supportpilot /etc/nginx/sites-enabled/supportpilot
+ln -sf /etc/nginx/sites-available/saluteagent /etc/nginx/sites-enabled/saluteagent
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
 
 systemctl daemon-reload
-systemctl enable --now supportpilot
+systemctl enable --now saluteagent
 
 # Ждём, пока поднимется, и наполняем очередь разобранными обращениями,
 # чтобы приложение открывалось на готовых данных

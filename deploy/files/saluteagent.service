@@ -1,0 +1,15 @@
+[Unit]
+Description=SaluteAgent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pilot
+WorkingDirectory=/opt/saluteagent/app/backend
+ExecStart=/opt/saluteagent/app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
