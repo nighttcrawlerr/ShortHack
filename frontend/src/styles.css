@@ -644,42 +644,49 @@ textarea { resize: vertical; font-family: inherit; }
 .portal-hello.compact .portal-title { font-size: 15px; }
 .portal-hello.compact .portal-greeting { font-size: 13px; margin-top: 2px; }
 
-.portal-avatar {
-  flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; letter-spacing: .3px;
-  color: var(--on-accent);
-  background: linear-gradient(135deg, var(--accent) 0%, #3fb95b 55%, #7fd18f 100%);
-}
-.portal-hello.compact .portal-avatar {
-  flex-basis: 30px; width: 30px; height: 30px; border-radius: 9px; font-size: 11px;
-}
+/* Знак берёт цвет от текста через currentColor, поэтому в тёмной теме
+   он светлеет вместе с остальным интерфейсом без отдельного правила. */
+.portal-avatar { flex: 0 0 44px; width: 44px; height: 44px; color: var(--accent); }
+.portal-hello.compact .portal-avatar { flex-basis: 30px; width: 30px; height: 30px; }
+
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-mark { color: var(--accent); flex: 0 0 auto; }
 
 .portal-pick { display: flex; flex-direction: column; gap: 10px; }
 
-/* Обёртка поля ввода: градиентная рамка, которая медленно переливается.
-   Толщина рамки задана отступом обёртки, само поле лежит поверх. */
+/* Обёртка поля ввода: градиентная рамка с бесшовным переливом.
+   Цикличность держится на трёх условиях.
+   Плитка фона ровно 240 пикселей: при repeat повторяется именно она,
+   а не ширина блока, поэтому шаг узора не зависит от размера поля.
+   Первый и последний цвет градиента совпадают: стык плиток не виден.
+   Угол строго 90 градусов, ось градиента совпадает с осью X, и сдвиг
+   на 240 пикселей возвращает картинку в точности к исходной. */
 .composer-glow {
   position: relative; padding: 2px; border-radius: 14px;
-  background: linear-gradient(
-    100deg,
-    var(--accent) 0%, #6ecf84 18%, var(--border) 38%,
-    var(--border) 62%, #6ecf84 82%, var(--accent) 100%
+  background-image: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    #6ecf84 17%,
+    var(--border) 34%,
+    var(--border) 66%,
+    #6ecf84 83%,
+    var(--accent) 100%
   );
-  background-size: 300% 100%;
+  background-size: 240px 100%;
+  background-repeat: repeat;
   animation: glow-slide 7s linear infinite;
 }
-.composer-glow.busy { animation-duration: 1.9s; }
+.composer-glow.busy { animation-duration: 1.8s; }
 
 .composer-glow textarea {
   border: 0; border-radius: 12px; background: var(--surface);
-  display: block; width: 100%;
+  display: block; width: 100%; position: relative; z-index: 1;
 }
 .composer-glow textarea:focus { outline: none; }
 
 @keyframes glow-slide {
-  from { background-position: 0% 50%; }
-  to { background-position: 300% 50%; }
+  from { background-position: 0 0; }
+  to { background-position: 240px 0; }
 }
 
 /* Перелив — украшение. Если человек просил убрать движение, рамка остаётся

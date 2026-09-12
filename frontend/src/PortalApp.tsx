@@ -1,4 +1,5 @@
 import { PortalPage } from './pages/PortalPage'
+import { Logo } from './components/Logo'
 import { ThemeToggle } from './components/ThemeToggle'
 
 /**
@@ -10,7 +11,7 @@ export default function PortalApp() {
   return (
     <div className="app">
       <header className="topbar portal-topbar">
-        <div className="brand">Salute<span>Agent</span></div>
+        <div className="brand"><Logo size={26} className="brand-mark" />Salute<span>Agent</span></div>
         <div className="topbar-title">Служба технической поддержки</div>
         <div className="topbar-right">
           <ThemeToggle />

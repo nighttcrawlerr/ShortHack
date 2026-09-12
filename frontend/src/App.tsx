@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Logo } from './components/Logo'
 import * as api from './api/client'
 import type { Dictionaries, Health } from './types'
 import { InboxPage } from './pages/InboxPage'
@@ -58,7 +59,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">Salute<span>Agent</span></div>
+        <div className="brand"><Logo size={26} className="brand-mark" />Salute<span>Agent</span></div>
         <nav className="tabs">
           <button className={`tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
             Инбокс

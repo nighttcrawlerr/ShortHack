@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as api from '../api/client'
+import { Logo } from '../components/Logo'
 import type { DictItem, PortalReply, PortalStatus } from '../types'
 
 /**
@@ -115,7 +116,7 @@ export function PortalPage() {
     <div className="portal">
       <div className="portal-inner">
         <div className={`portal-hello ${started ? 'compact' : ''}`}>
-          <div className="portal-avatar" aria-hidden="true">SA</div>
+          <Logo className="portal-avatar" />
           <div>
             <div className="portal-title">
               {started ? 'SaluteAgent на связи' : 'Здравствуйте! Я SaluteAgent'}
