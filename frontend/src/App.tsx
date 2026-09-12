@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from './api/client'
 import type { Dictionaries, Health } from './types'
 import { InboxPage } from './pages/InboxPage'
+import { PortalPage } from './pages/PortalPage'
 import { StatsPage } from './pages/StatsPage'
 import { TicketsPage } from './pages/TicketsPage'
 import { ThemeToggle } from './components/ThemeToggle'
 
-type Tab = 'inbox' | 'tickets' | 'stats'
+type Tab = 'portal' | 'inbox' | 'tickets' | 'stats'
 
 function LlmChip({ health }: { health: Health | null }) {
   if (!health) return <span className="status-chip">соединяюсь…</span>
@@ -60,6 +61,10 @@ export default function App() {
       <header className="topbar">
         <div className="brand">Salute<span>Agent</span></div>
         <nav className="tabs">
+          <button className={`tab ${tab === 'portal' ? 'active' : ''}`} onClick={() => setTab('portal')}>
+            Написать в поддержку
+          </button>
+          <span className="tab-divider" />
           <button className={`tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
             Инбокс
           </button>
@@ -82,6 +87,7 @@ export default function App() {
         </div>
       </header>
 
+      {tab === 'portal' && <PortalPage />}
       {tab === 'inbox' && (
         <InboxPage
           dicts={dicts}

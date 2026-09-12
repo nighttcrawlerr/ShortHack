@@ -1,6 +1,6 @@
 import type {
-  Analysis, ApplyRequest, Dictionaries, Health, MessageDetail, MessageListItem,
-  RagResponse, SimilarTicket, Stats, Ticket,
+  Analysis, ApplyRequest, Dictionaries, DictItem, Health, MessageDetail, MessageListItem,
+  PortalReply, RagResponse, SimilarTicket, Stats, Ticket,
 } from '../types'
 
 const BASE = '/api'
@@ -64,6 +64,13 @@ export const searchRag = (q: string, limit = 5) =>
 
 export const analyzeAll = () =>
   request<{ analyzed: number; failed: number }>('/messages/analyze-all', { method: 'POST' })
+
+export const getPortalCategories = () =>
+  request<{ categories: DictItem[]; greeting: string }>('/portal/categories')
+
+export const portalAsk = (payload: {
+  text: string; category?: string | null; message_id?: number | null
+}) => request<PortalReply>('/portal/ask', { method: 'POST', body: JSON.stringify(payload) })
 
 export const getStats = () => request<Stats>('/stats')
 export const reseed = () => request<Record<string, number>>('/seed', { method: 'POST' })

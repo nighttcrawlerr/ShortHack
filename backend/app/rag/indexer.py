@@ -11,7 +11,7 @@ from app.rag.tokens import tokenize
 BATCH = 16
 
 
-def rebuild_index(db: Session, token_provider=None) -> dict:
+def rebuild_index(db: Session, token_provider=None, with_vectors: bool = True) -> dict:
     db.execute(delete(KBChunk))
     db.commit()
 
@@ -42,7 +42,7 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
     embedded = 0
     error: str | None = None
 
-    if embedder.available() and created:
+    if with_vectors and embedder.available() and created:
         for start in range(0, len(created), BATCH):
             batch = created[start : start + BATCH]
             try:
@@ -67,3 +67,33 @@ def rebuild_index(db: Session, token_provider=None) -> dict:
     if error:
         result["error"] = error
     return result
+
+
+def fill_vectors_in_background() -> None:
+    """Досчитывает векторы после запуска приложения.
+
+    Считать их на старте нельзя: каждый фрагмент уходит отдельным запросом,
+    и приложение молчит все эти секунды. Лексический поиск работает сразу,
+    векторный подключается через несколько секунд после запуска.
+    """
+    import threading
+
+    def worker() -> None:
+        from app.db import SessionLocal
+        from app.models import KBChunk
+
+        db = SessionLocal()
+        try:
+            pending = db.query(KBChunk).filter(KBChunk.embedding.is_(None)).count()
+            if not pending:
+                return
+            embedder = get_embedder()
+            if not embedder.available():
+                return
+            rebuild_index(db, with_vectors=True)
+        except Exception:  # noqa: BLE001  фоновая задача не должна ронять сервис
+            pass
+        finally:
+            db.close()
+
+    threading.Thread(target=worker, daemon=True, name="fill-vectors").start()

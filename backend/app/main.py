@@ -30,6 +30,10 @@ async def lifespan(app: FastAPI):
         seed_if_empty(db)
     finally:
         db.close()
+
+    from app.rag.indexer import fill_vectors_in_background
+
+    fill_vectors_in_background()
     yield
 
 
@@ -49,11 +53,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.routers import messages, misc, tickets  # noqa: E402
+from app.routers import messages, misc, portal, tickets  # noqa: E402
 
 app.include_router(misc.router)
 app.include_router(messages.router)
 app.include_router(tickets.router)
+app.include_router(portal.router)
 
 
 # --- отдача собранного интерфейса ------------------------------------------

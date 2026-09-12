@@ -43,6 +43,9 @@ class Message(Base):
     received_at: Mapped[str] = mapped_column(String(40), default=now_iso)
     body: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(20), default="new")
+    # Категория, которую пользователь выбрал сам перед отправкой.
+    # Это подсказка, а не приговор: модель может отнести обращение иначе.
+    client_category: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[str] = mapped_column(String(40), default=now_iso)
 
     analyses: Mapped[list["Analysis"]] = relationship(

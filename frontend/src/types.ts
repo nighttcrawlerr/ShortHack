@@ -219,3 +219,17 @@ export interface ApplyRequest {
   edited_body?: string | null
   edited_subject?: string | null
 }
+
+export type PortalStatus = 'answered' | 'ticket_created' | 'clarification' | 'pending_human'
+
+export interface PortalSource { title: string; source: string }
+
+export interface PortalReply {
+  message_id: number
+  status: PortalStatus
+  reply: string
+  questions: string[]
+  sources: PortalSource[]
+  ticket_key: string | null
+  elapsed_ms: number
+}

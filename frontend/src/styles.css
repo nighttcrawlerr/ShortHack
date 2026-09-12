@@ -111,7 +111,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
 .brand span { color: var(--accent); }
 
-.tabs { display: flex; gap: 4px; }
+.tabs { display: flex; gap: 4px; align-items: center; }
+.tab-divider { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
 
 .tab {
   padding: 6px 14px; border-radius: 8px; border: 0; cursor: pointer;
@@ -546,4 +547,79 @@ textarea { resize: vertical; font-family: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .row-leaving { animation: none; opacity: 0; }
+}
+
+/* --- окно пользователя --------------------------------------------------
+   Тот же набор токенов, что и в рабочем месте оператора: палитра, радиусы
+   и тени берутся оттуда, поэтому обе стороны продукта выглядят одинаково
+   и переключение темы работает здесь само. */
+
+.portal { flex: 1; min-height: 0; overflow-y: auto; display: flex; justify-content: center; }
+
+.portal-inner {
+  width: min(720px, 100%); padding: 28px 20px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.portal-hello { padding-top: 18px; }
+.portal-title { font-size: 28px; font-weight: 700; letter-spacing: -0.6px; }
+.portal-greeting { color: var(--muted); line-height: 1.6; margin: 8px 0 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+  box-shadow: var(--shadow);
+}
+.chip:hover { background: var(--surface-2); color: var(--text); }
+.chip.chosen {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent-text); font-weight: 600;
+}
+
+.chat { display: flex; flex-direction: column; gap: 14px; }
+
+.bubble {
+  max-width: 88%; padding: 13px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border); line-height: 1.6;
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.bubble.user {
+  align-self: flex-end; background: var(--accent-soft);
+  border-bottom-right-radius: 4px;
+}
+.bubble.assistant { align-self: flex-start; border-bottom-left-radius: 4px; }
+.bubble-text { white-space: pre-wrap; word-break: break-word; }
+
+.bubble-sources {
+  margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border);
+  font-size: 12.5px; color: var(--faint); display: flex; flex-direction: column; gap: 3px;
+}
+.bubble-meta { margin-top: 8px; font-size: 12px; color: var(--faint); }
+
+/* Сноска на источник прямо в тексте ответа. */
+.cite {
+  display: inline-block; min-width: 14px; padding: 0 3px; margin: 0 0 0 1px;
+  border-radius: 4px; background: var(--accent-soft); color: var(--accent-text);
+  font-size: 10.5px; font-weight: 700; vertical-align: super; line-height: 1.6;
+}
+
+.typing { display: flex; gap: 5px; padding: 3px 0; }
+.typing span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--faint);
+  animation: blink 1.3s infinite;
+}
+.typing span:nth-child(2) { animation-delay: .18s; }
+.typing span:nth-child(3) { animation-delay: .36s; }
+@keyframes blink { 0%, 60%, 100% { opacity: .25 } 30% { opacity: 1 } }
+
+.composer {
+  position: sticky; bottom: 0; background: var(--bg);
+  padding-top: 10px; display: flex; flex-direction: column; gap: 9px;
+}
+.composer-row { display: flex; align-items: center; gap: 9px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .typing span { animation: none; opacity: .6; }
 }

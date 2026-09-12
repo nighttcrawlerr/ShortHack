@@ -30,7 +30,7 @@ def _shift_to_today(raw_messages: list[dict]) -> list[str]:
     return [(dt + shift).isoformat() for dt in parsed]
 
 
-def seed_database(db: Session, wipe: bool = True) -> dict:
+def seed_database(db: Session, wipe: bool = True, with_vectors: bool = True) -> dict:
     if wipe:
         for model in (AgentStep, Outbox, Analysis, Ticket, KBArticle, Message):
             db.execute(delete(model))
@@ -94,7 +94,7 @@ def seed_database(db: Session, wipe: bool = True) -> dict:
 
     from app.rag.indexer import rebuild_index
 
-    index = rebuild_index(db)
+    index = rebuild_index(db, with_vectors=with_vectors)
     return {
         "messages": len(raw_messages),
         "kb_articles": len(raw_kb),
@@ -106,5 +106,6 @@ def seed_database(db: Session, wipe: bool = True) -> dict:
 
 
 def seed_if_empty(db: Session) -> None:
+    """На старте индекс строится без векторов, чтобы приложение поднялось сразу."""
     if db.query(Message).count() == 0:
-        seed_database(db, wipe=False)
+        seed_database(db, wipe=False, with_vectors=False)

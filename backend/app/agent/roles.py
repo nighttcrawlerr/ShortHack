@@ -130,10 +130,10 @@ def verify_with_model(client, answer: str, passages: list[dict]) -> tuple[dict, 
 
 
 def verify_answer(client, answer: str, passages: list[dict], message_body: str,
-                  use_model: bool = True) -> verifier.Verdict:
+                  use_model: bool = True, mode: str = "answer") -> verifier.Verdict:
     """Два слоя проверки. Код — всегда, модель — когда цена ошибки высока."""
     started = time.perf_counter()
-    verdict = verifier.check_deterministic(answer, passages, message_body)
+    verdict = verifier.check_deterministic(answer, passages, message_body, mode=mode)
 
     if not use_model or verdict.status == "rejected":
         # Если детерминированный слой уже отверг ответ, звать модель незачем:

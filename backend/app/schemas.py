@@ -233,3 +233,27 @@ class StatsOut(BaseModel):
     by_priority: list[CountItem]
     by_action: list[CountItem]
     mass_incidents: list[MassIncidentOut]
+
+
+class PortalAskRequest(BaseModel):
+    text: str
+    category: str | None = None
+    message_id: int | None = None
+    author_name: str | None = None
+    author_email: str | None = None
+
+
+class PortalReply(BaseModel):
+    message_id: int
+    status: Literal["answered", "ticket_created", "clarification", "pending_human"]
+    reply: str
+    questions: list[str] = Field(default_factory=list)
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    ticket_key: str | None = None
+    elapsed_ms: int = 0
+
+
+class PortalTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str
+    at: str

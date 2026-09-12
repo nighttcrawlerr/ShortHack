@@ -56,11 +56,13 @@ BOILERPLATE = re.compile(
     re.I,
 )
 
+# Ответ и уточняющее письмо проверяются по-разному. Ответ утверждает,
+# поэтому с него спрашивают ссылки и совпадение с источниками. Письмо
+# с вопросами не утверждает ничего: в нём опасны только выдуманные факты
+# и обещания, которых никто не давал.
 WEIGHTS = {
-    "citations": 0.25,
-    "facts": 0.35,
-    "coverage": 0.20,
-    "promises": 0.20,
+    "answer": {"citations": 0.25, "facts": 0.35, "coverage": 0.20, "promises": 0.20},
+    "questions": {"facts": 0.6, "promises": 0.4},
 }
 
 
@@ -125,7 +127,8 @@ def _strip_citations(text: str) -> str:
     return CITATION.sub(" ", text)
 
 
-def check_deterministic(answer: str, passages: list[dict], message_body: str) -> Verdict:
+def check_deterministic(answer: str, passages: list[dict], message_body: str,
+                        mode: str = "answer") -> Verdict:
     """Первый слой: всё, что можно проверить без обращения к модели."""
     sources_text = "\n".join(p.get("text", "") for p in passages)
     grounded_text = f"{sources_text}\n{message_body}"
@@ -210,20 +213,34 @@ def check_deterministic(answer: str, passages: list[dict], message_body: str) ->
     issues.extend(promise_issues)
     promises_score = 0.0 if promise_issues else 1.0
 
-    score = (
-        WEIGHTS["citations"] * citation_score
-        + WEIGHTS["facts"] * facts_score
-        + WEIGHTS["coverage"] * min(coverage / 0.6, 1.0)
-        + WEIGHTS["promises"] * promises_score
-    )
-    # Доля утверждений со ссылкой влияет как множитель: ответ, где половина
-    # предложений висит в воздухе, не может считаться проверенным.
-    score *= 0.5 + 0.5 * supported_share
-
-    return Verdict(
-        status=status_for(score, issues),
-        score=score,
-        checks={
+    if mode == "questions":
+        # Претензии к ссылкам и совпадению слов здесь не по делу: снимаем их,
+        # чтобы вежливая фраза «мы получили ваше обращение» не выглядела
+        # нарушением.
+        issues = [
+            issue for issue in issues
+            if issue.kind not in ("uncited_claim", "low_coverage", "broken_citation")
+        ]
+        weights = WEIGHTS["questions"]
+        score = weights["facts"] * facts_score + weights["promises"] * promises_score
+        checks = {
+            "facts_grounded": not fact_issues,
+            "no_unsupported_promises": not promise_issues,
+            "questions": len(sentences) - len(statements),
+            "sentences": len(sentences),
+        }
+    else:
+        weights = WEIGHTS["answer"]
+        score = (
+            weights["citations"] * citation_score
+            + weights["facts"] * facts_score
+            + weights["coverage"] * min(coverage / 0.6, 1.0)
+            + weights["promises"] * promises_score
+        )
+        # Доля утверждений со ссылкой влияет как множитель: ответ, где половина
+        # предложений висит в воздухе, не может считаться проверенным.
+        score *= 0.5 + 0.5 * supported_share
+        checks = {
             "citations_valid": not broken,
             "cited_share": round(supported_share, 2),
             "questions": len(sentences) - len(statements),
@@ -232,7 +249,12 @@ def check_deterministic(answer: str, passages: list[dict], message_body: str) ->
             "no_unsupported_promises": not promise_issues,
             "sentences": len(sentences),
             "sources": len(passages),
-        },
+        }
+
+    return Verdict(
+        status=status_for(score, issues),
+        score=score,
+        checks=checks,
         issues=issues,
     )
 

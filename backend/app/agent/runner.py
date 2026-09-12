@@ -9,6 +9,7 @@ from app.agent import roles, search, tools
 from app.config import settings
 from app.dictionaries import (
     ACTION_CODES,
+    CATEGORIES,
     CATEGORY_CODES,
     PRIORITY_CODES,
     SENTIMENT_CODES,
@@ -135,6 +136,12 @@ def _extract(client, message: Message, trace: Trace) -> dict:
         author_name=message.author_name,
         author_email=message.author_email,
         received_at=message.received_at,
+        client_hint=(
+            f"Пользователь отнёс обращение к категории: "
+            f"{label_of(CATEGORIES, message.client_category)}\n"
+            if message.client_category
+            else ""
+        ),
         body=message.body,
     )
     raw, ms = client.complete_json(
@@ -399,7 +406,8 @@ def run_analysis(db: Session, message: Message, force: bool = False) -> Analysis
         if letter is not None:
             t0 = time.perf_counter()
             verdict = roles.verify_answer(
-                client, letter.body, passages, message.body, use_model=False
+                client, letter.body, passages, message.body,
+                use_model=False, mode="questions",
             )
             analysis.verification = verdict.as_dict()
             letter.verification = verdict.as_dict()
@@ -498,7 +506,11 @@ def _human_reason(verdict, tool_name: str, extracted: dict) -> str:
             "insufficient": "В базе знаний нет подходящего материала для ответа",
         }.get(verdict.status, "Проверка ответа завершилась с замечаниями")
 
-    if extracted.get("confidence", 1.0) < 0.6:
+    if extracted.get("confidence", 1.0) < 0.6 and tool_name != "ask_clarification":
+        # Неуверенный разбор опасен, когда мы что-то утверждаем или кого-то
+        # нагружаем заявкой. Задать уточняющий вопрос при этом безопасно:
+        # худшее, что случится, — человек ответит на лишний вопрос.
+        # Останавливать здесь означало бы заставить его ждать вместо ответа.
         return "Модель не уверена в разборе обращения"
 
     if extracted.get("priority") == "P1":
