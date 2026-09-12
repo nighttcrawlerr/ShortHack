@@ -39,10 +39,11 @@ LLM_MODEL="$(get LLM_MODEL)"
 USERDATA="$(mktemp -t supportpilot-cloudinit)"
 trap 'rm -f "$USERDATA"' EXIT
 
-python3 - "$ROOT/deploy/cloud-init.yaml" "$USERDATA" <<PY
+python3 - "$ROOT/deploy/cloud-init.yaml" "$USERDATA" "$SSH_KEY" <<PY
 import sys
-src, dst = sys.argv[1], sys.argv[2]
+src, dst, keyfile = sys.argv[1], sys.argv[2], sys.argv[3]
 text = open(src, encoding="utf-8").read()
+text = text.replace("ПОДСТАВЛЯЕТСЯ_СКРИПТОМ", open(keyfile, encoding="utf-8").read().strip())
 for key, value in {
     "GIT_REPO=https://github.com/nighttcrawlerr/ShortHack": "GIT_REPO=$REPO",
     "LLM_PROVIDER=yandex": "LLM_PROVIDER=$LLM_PROVIDER",
@@ -55,7 +56,18 @@ for key, value in {
 open(dst, "w", encoding="utf-8").write(text)
 PY
 
-echo "Создаю машину $NAME в зоне $ZONE…"
+# В свежем каталоге сети может не быть: создаём, если её нет
+if ! "$YC" vpc network get --name default >/dev/null 2>&1; then
+  echo "Создаю сеть default"
+  "$YC" vpc network create --name default --description "SupportPilot" >/dev/null
+fi
+if ! "$YC" vpc subnet get --name "default-$ZONE" >/dev/null 2>&1; then
+  echo "Создаю подсеть default-$ZONE"
+  "$YC" vpc subnet create --name "default-$ZONE" --network-name default \
+    --zone "$ZONE" --range 10.128.0.0/24 >/dev/null
+fi
+
+echo "Создаю машину $NAME в зоне $ZONE."
 "$YC" compute instance create \
   --name "$NAME" \
   --zone "$ZONE" \
@@ -64,7 +76,6 @@ echo "Создаю машину $NAME в зоне $ZONE…"
   --create-boot-disk image-folder-id=standard-images,image-family=ubuntu-2404-lts,size=20,type=network-ssd \
   --network-interface subnet-name=default-"$ZONE",nat-ip-version=ipv4 \
   --metadata-from-file user-data="$USERDATA" \
-  --ssh-key "$SSH_KEY" \
   --format json > /tmp/supportpilot-instance.json
 
 IP="$(python3 -c "
